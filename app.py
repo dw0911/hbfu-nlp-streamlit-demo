@@ -9,7 +9,7 @@ from PIL import Image
 from collections import Counter
 
 from ner import load_ner, extract_entities, LABEL_MAP, TYPE_COLORS
-from ocr import load_ocr, extract_text_from_image
+from ocr import load_ocr, extract_text_from_image, _RAPIDOCR_ERROR
 from extractor import fetch_url_text, parse_html, fetch_url_images
 
 from summarizer import generate_report, classify_topic
@@ -161,13 +161,17 @@ elif input_mode == "上传图片（OCR）":
     if img_file:
         image = Image.open(img_file)
         st.image(image, caption="已上传图片", use_container_width=True)
-        try:
-            engine = get_ocr()
-            with st.spinner("正在进行 OCR 识别..."):
-                text = extract_text_from_image(image, engine)
-            st.text_area("OCR 识别结果（可编辑）", value=text, height=220)
-        except Exception as e:
-            st.error(f"OCR 识别失败：{e}")
+        engine = get_ocr()
+        if engine is None:
+            st.error(f"OCR 引擎在当前环境不可用，图片识别功能已禁用。({_RAPIDOCR_ERROR})")
+        else:
+            try:
+                with st.spinner("正在进行 OCR 识别..."):
+                    text = extract_text_from_image(image, engine)
+                st.text_area("OCR 识别结果（可编辑）", value=text, height=220)
+            except Exception as e:
+                st.error(f"OCR 识别失败：{e}")
+
 
 elif input_mode == "URL 抓取":
     url = st.text_input("微信公众号文章 URL", placeholder="https://mp.weixin.qq.com/s/...")
@@ -175,10 +179,14 @@ elif input_mode == "URL 抓取":
         try:
             with st.spinner("正在抓取文章并识别图片文字..."):
                 title, text, html = fetch_url_text(url)
-                image_text = fetch_url_images(html, base_url=url, ocr_engine=get_ocr())
-                if image_text.strip():
-                    text += "\n\n" + image_text
-                    st.info(f"已从图片中识别 {len(image_text)} 字符")
+                engine = get_ocr()
+                if engine is not None:
+                    image_text = fetch_url_images(html, base_url=url, ocr_engine=engine)
+                    if image_text.strip():
+                        text += "\n\n" + image_text
+                        st.info(f"已从图片中识别 {len(image_text)} 字符")
+                else:
+                    st.info("OCR 引擎不可用，跳过图片文字识别。")
             if title:
                 st.success(f"已抓取：{title}")
             else:
