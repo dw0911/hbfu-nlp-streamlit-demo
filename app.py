@@ -115,6 +115,7 @@ with st.sidebar:
     input_mode = st.radio(
         "输入方式",
         ["粘贴文本", "上传图片（OCR）", "URL 抓取", "上传文件", "批量文件处理"],
+        key="input_mode_radio"
     )
 
     st.markdown("---")
@@ -123,6 +124,7 @@ with st.sidebar:
         "选择识别模型",
         ["自动选择（推荐）", "spaCy 高级模型", "jieba 离线规则"],
         index=0,
+        key="engine_choice_select"
     )
     backend_map = {
         "自动选择（推荐）": "auto",
