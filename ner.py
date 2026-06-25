@@ -306,67 +306,28 @@ _add_domain_words()
 
 
 class NEREngine:
-    """统一 NER 引擎，支持 spaCy（高级模型）和 jieba（离线备选）。"""
+    """NER 引擎，基于 jieba + 领域词典 + 规则，零外部模型依赖，适合云部署。"""
 
-    def __init__(self, backend="auto"):
-        self.backend = backend
+    def __init__(self, backend="jieba"):
+        self.backend = "jieba"
         self.spacy_nlp = None
-        self.info = ""
+        self.info = "jieba 离线规则（领域词典 + 规则）"
 
-        if backend in ("auto", "spacy"):
+        if backend == "spacy":
             try:
                 import spacy
-                import sys
-                import subprocess
-
-                # 检测 numpy 二进制不兼容并自动修复
-                def _reinstall_spacy_for_numpy():
-                    subprocess.check_call(
-                        [sys.executable, "-m", "pip", "install", "--force-reinstall", "--no-deps", "spacy"],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    )
-
-                # 自动下载并安装中文模型（首次部署或模型缺失时）
-                if not spacy.util.is_package("zh_core_web_sm"):
-                    # 优先用 pip 直接安装 PyPI 上的模型包，比 spacy download 更可靠
-                    try:
-                        subprocess.check_call(
-                            [sys.executable, "-m", "pip", "install", "zh-core-web-sm"],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                        )
-                    except Exception:
-                        # 回退到 spacy download（覆盖 GitHub releases 源）
-                        subprocess.check_call(
-                            [sys.executable, "-m", "spacy", "download", "zh_core_web_sm"],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                        )
-
-                # 尝试加载，numpy 不兼容时强制重建 spaCy
-                try:
+                if spacy.util.is_package("zh_core_web_sm"):
                     self.spacy_nlp = spacy.load("zh_core_web_sm")
-                except Exception as load_err:
-                    err_msg = str(load_err)
-                    if "numpy.dtype" in err_msg or "dtype size changed" in err_msg:
-                        _reinstall_spacy_for_numpy()
-                        self.spacy_nlp = spacy.load("zh_core_web_sm")
-                    else:
-                        raise
-
-                self.backend = "spacy"
-                self.info = "spaCy zh_core_web_sm"
-            except Exception as e:
-                self.backend = "jieba"
-                if backend == "auto":
-                    self.info = f"jieba 离线规则（spaCy 中文模型未安装，已自动回退：{e}）"
+                    self.backend = "spacy"
+                    self.info = "spaCy zh_core_web_sm"
                 else:
                     raise RuntimeError(
-                        f"spaCy 模型加载失败：{e}\n"
-                        f"请尝试运行：python -m spacy download zh_core_web_sm"
+                        "spaCy 中文模型未安装，请运行：pip install "
+                        "https://github.com/explosion/spacy-models/releases/download/"
+                        "zh_core_web_sm-3.7.0/zh_core_web_sm-3.7.0-py3-none-any.whl"
                     )
-
-        else:
-            self.backend = "jieba"
-            self.info = "jieba 离线规则"
+            except Exception as e:
+                raise RuntimeError(f"spaCy 加载失败：{e}")
 
 
     def _is_chinese_name(self, word):

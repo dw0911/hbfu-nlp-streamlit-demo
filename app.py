@@ -122,20 +122,20 @@ with st.sidebar:
     st.markdown("**🔧 NER 引擎**")
     engine_choice = st.selectbox(
         "选择识别模型",
-        ["自动选择（推荐）", "spaCy 高级模型", "jieba 离线规则"],
+        ["jieba 离线规则（推荐）", "spaCy 高级模型（需手动安装模型）"],
         index=0,
         key="engine_choice_select"
     )
     backend_map = {
-        "自动选择（推荐）": "auto",
-        "spaCy 高级模型": "spacy",
-        "jieba 离线规则": "jieba",
+        "jieba 离线规则（推荐）": "jieba",
+        "spaCy 高级模型（需手动安装模型）": "spacy",
     }
     selected_backend = backend_map[engine_choice]
 
     st.markdown("---")
     st.markdown("**ℹ️ 说明**")
-    st.markdown("- 优先尝试 spaCy 中文模型，失败后自动使用 jieba 离线规则。")
+    st.markdown("- 使用 jieba + 领域词典 + 规则进行实体识别，无需下载模型。")
+    st.markdown("- 如需 spaCy 高级模型，请先运行：`pip install https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.7.0/zh_core_web_sm-3.7.0-py3-none-any.whl`")
     st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入。")
     st.markdown("- 识别结果分为：实体识别、可视化、文章总结三个标签页。")
 
