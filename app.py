@@ -9,7 +9,7 @@ from PIL import Image
 from collections import Counter
 
 from ner import load_ner, extract_entities, LABEL_MAP, TYPE_COLORS
-from ocr import load_ocr, extract_text_from_image, _RAPIDOCR_ERROR
+import ocr as _ocr
 from extractor import fetch_url_text, parse_html, fetch_url_images
 
 from summarizer import generate_report, classify_topic
@@ -79,7 +79,7 @@ st.markdown('<div class="author-badge">👨‍💻 开发作者：河北金融�
 
 @st.cache_resource(show_spinner="加载 OCR 引擎...")
 def get_ocr():
-    return load_ocr()
+    return _ocr.load_ocr()
 
 
 def highlight_html(text, entities):
@@ -165,11 +165,11 @@ elif input_mode == "上传图片（OCR）":
         st.image(image, caption="已上传图片", use_container_width=True)
         engine = get_ocr()
         if engine is None:
-            st.error(f"OCR 引擎在当前环境不可用，图片识别功能已禁用。({_RAPIDOCR_ERROR})")
+            st.error(f"OCR 引擎在当前环境不可用，图片识别功能已禁用。({_ocr._RAPIDOCR_ERROR})")
         else:
             try:
                 with st.spinner("正在进行 OCR 识别..."):
-                    text = extract_text_from_image(image, engine)
+                    text = _ocr.extract_text_from_image(image, engine)
                 text = st.text_area("OCR 识别结果（可编辑）", value=text, height=220, key="ocr_result")
             except Exception as e:
                 st.error(f"OCR 识别失败：{e}")
