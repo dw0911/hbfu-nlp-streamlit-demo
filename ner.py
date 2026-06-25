@@ -26,7 +26,9 @@ def _get_glm_api_key():
     # 2. 尝试从 streamlit secrets 读取
     try:
         import streamlit as st
-        return st.secrets.get("GLM_API_KEY", "")
+        key = st.secrets.get("GLM_API_KEY", "")
+        if key:
+            return key
     except Exception:
         pass
 
