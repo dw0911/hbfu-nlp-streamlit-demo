@@ -1,3 +1,4 @@
 fonts-wqy-zenhei
 fonts-wqy-microhei
 libgomp1
+libgl1-mesa-glx
