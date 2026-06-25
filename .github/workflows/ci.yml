@@ -26,6 +26,9 @@ jobs:
           python -m py_compile extractor.py
           python -m py_compile summarizer.py
           python -m py_compile visualizer.py
+          python -m py_compile test_run.py
+          python -m py_compile start_server.py
+
 
       - name: Install dependencies
         run: |

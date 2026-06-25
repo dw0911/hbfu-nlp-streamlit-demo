@@ -154,10 +154,10 @@ text = ""
 file_name = ""
 
 if input_mode == "粘贴文本":
-    text = st.text_area("请输入需要识别的文本", height=300, placeholder="粘贴河北金融学院公众号文章正文...")
+    text = st.text_area("请输入需要识别的文本", height=300, placeholder="粘贴河北金融学院公众号文章正文...", key="text_input")
 
 elif input_mode == "上传图片（OCR）":
-    img_file = st.file_uploader("上传文章截图（PNG / JPG）", type=["png", "jpg", "jpeg"])
+    img_file = st.file_uploader("上传文章截图（PNG / JPG）", type=["png", "jpg", "jpeg"], key="img_upload")
     if img_file:
         image = Image.open(img_file)
         st.image(image, caption="已上传图片", use_container_width=True)
@@ -168,13 +168,13 @@ elif input_mode == "上传图片（OCR）":
             try:
                 with st.spinner("正在进行 OCR 识别..."):
                     text = extract_text_from_image(image, engine)
-                st.text_area("OCR 识别结果（可编辑）", value=text, height=220)
+                text = st.text_area("OCR 识别结果（可编辑）", value=text, height=220, key="ocr_result")
             except Exception as e:
                 st.error(f"OCR 识别失败：{e}")
 
 
 elif input_mode == "URL 抓取":
-    url = st.text_input("微信公众号文章 URL", placeholder="https://mp.weixin.qq.com/s/...")
+    url = st.text_input("微信公众号文章 URL", placeholder="https://mp.weixin.qq.com/s/...", key="url_input")
     if url:
         try:
             with st.spinner("正在抓取文章并识别图片文字..."):
@@ -191,13 +191,13 @@ elif input_mode == "URL 抓取":
                 st.success(f"已抓取：{title}")
             else:
                 st.info("已提取正文，未获取到标题。")
-            st.text_area("正文（可编辑）", value=text, height=300)
+            text = st.text_area("正文（可编辑）", value=text, height=300, key="url_text")
         except Exception as e:
             st.error(f"抓取失败：{e}")
 
 
 elif input_mode == "上传文件":
-    uploaded = st.file_uploader("上传 .txt / .html", type=["txt", "html", "htm"])
+    uploaded = st.file_uploader("上传 .txt / .html", type=["txt", "html", "htm"], key="file_upload")
     if uploaded:
         try:
             raw = uploaded.read().decode("utf-8", errors="ignore")
@@ -206,12 +206,12 @@ elif input_mode == "上传文件":
             else:
                 text = raw
             file_name = uploaded.name
-            st.text_area("文件内容（可编辑）", value=text, height=300)
+            text = st.text_area("文件内容（可编辑）", value=text, height=300, key="file_text")
         except Exception as e:
             st.error(f"读取文件失败：{e}")
 
 elif input_mode == "批量文件处理":
-    batch_files = st.file_uploader("批量上传 .txt / .html", type=["txt", "html", "htm"], accept_multiple_files=True)
+    batch_files = st.file_uploader("批量上传 .txt / .html", type=["txt", "html", "htm"], accept_multiple_files=True, key="batch_upload")
     if batch_files:
         batch_texts = {}
         for uploaded in batch_files:
@@ -226,12 +226,19 @@ elif input_mode == "批量文件处理":
                 st.error(f"读取 {uploaded.name} 失败：{e}")
         if batch_texts:
             st.success(f"已加载 {len(batch_texts)} 个文件")
-            selected_file = st.selectbox("选择预览文件", list(batch_texts.keys()))
+            selected_file = st.selectbox("选择预览文件", list(batch_texts.keys()), key="batch_select")
             text = batch_texts[selected_file]
             file_name = selected_file
-            st.text_area("当前文件内容（可编辑）", value=text, height=300)
+            text = st.text_area("当前文件内容（可编辑）", value=text, height=300, key="batch_text")
             # 保存到 session_state 供批量导出使用
             st.session_state["batch_texts"] = batch_texts
+
+
+# 切换到非批量模式时清理残留的批量文本，避免底部导出块错误显示
+if input_mode != "批量文件处理" and "batch_texts" in st.session_state:
+    del st.session_state["batch_texts"]
+
+
 
 
 # ============================================================
@@ -391,26 +398,30 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
 if input_mode == "批量文件处理" and "batch_texts" in st.session_state:
     st.markdown("---")
     st.subheader("📦 批量处理导出")
-    if st.button("一键处理所有文件并导出汇总", type="secondary"):
-        ner_engine = get_ner(selected_backend)
-        all_results = []
-        progress = st.progress(0)
-        for idx, (fname, content) in enumerate(st.session_state["batch_texts"].items()):
-            ents = extract_entities(content, ner_engine)
-            report = generate_report(content, ents)
-            all_results.append({
-                "文件名": fname,
-                "实体数": len(ents),
-                "主题": report["topic"],
-                "摘要": report["summary"].replace("\n", " "),
-                "关键词": ", ".join([k for k, _ in report["keywords"][:10]]),
-                "涉及机构": ", ".join(report["key_info"]["orgs"][:10]),
-                "人物": ", ".join(report["key_info"]["persons"][:10]),
-                "地点": ", ".join(report["key_info"]["locations"][:10]),
-                "时间": ", ".join(report["key_info"]["times"][:10]),
-            })
-            progress.progress((idx + 1) / len(st.session_state["batch_texts"]))
-        batch_df = pd.DataFrame(all_results)
-        st.dataframe(batch_df, use_container_width=True, height=400)
-        csv = batch_df.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("📥 下载批量汇总 CSV", csv, "batch_summary.csv", "text/csv")
+    if st.button("一键处理所有文件并导出汇总", type="secondary", key="batch_export_btn"):
+        try:
+            ner_engine = get_ner(selected_backend)
+            all_results = []
+            progress = st.progress(0)
+            for idx, (fname, content) in enumerate(st.session_state["batch_texts"].items()):
+                ents = extract_entities(content, ner_engine)
+                report = generate_report(content, ents)
+                all_results.append({
+                    "文件名": fname,
+                    "实体数": len(ents),
+                    "主题": report["topic"],
+                    "摘要": report["summary"].replace("\n", " "),
+                    "关键词": ", ".join([k for k, _ in report["keywords"][:10]]),
+                    "涉及机构": ", ".join(report["key_info"]["orgs"][:10]),
+                    "人物": ", ".join(report["key_info"]["persons"][:10]),
+                    "地点": ", ".join(report["key_info"]["locations"][:10]),
+                    "时间": ", ".join(report["key_info"]["times"][:10]),
+                })
+                progress.progress((idx + 1) / len(st.session_state["batch_texts"]))
+            batch_df = pd.DataFrame(all_results)
+            st.dataframe(batch_df, use_container_width=True, height=400)
+            csv = batch_df.to_csv(index=False).encode("utf-8-sig")
+            st.download_button("📥 下载批量汇总 CSV", csv, "batch_summary.csv", "text/csv", key="batch_csv_download")
+        except Exception as e:
+            st.error(f"批量导出失败：{e}")
+
