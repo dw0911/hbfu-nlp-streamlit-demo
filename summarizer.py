@@ -243,7 +243,7 @@ def generate_report(text, entities, use_glm=False):
     return report
 
 
-def chat_with_article(text, history, user_input, model="glm-5.2", max_tokens=512):
+def chat_with_article(text, history, user_input, model="glm-5.2", max_tokens=2048):
     """
     与文章进行自由对话。
     text: 文章内容
