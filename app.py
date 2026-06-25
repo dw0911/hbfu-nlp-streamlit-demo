@@ -151,19 +151,21 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("**🤖 大模型总结（智谱 GLM-5.2）**")
-    glm_api_key = st.text_input(
-        "GLM API Key（选填，填写后启用大模型生成式摘要）",
-        type="password",
-        value=st.secrets.get("GLM_API_KEY", ""),
-        key="glm_api_key_input"
-    )
+    # 后端自动读取 API Key（从 Secrets 或环境变量）
+    import os
+    glm_api_key = os.getenv("GLM_API_KEY", "")
+    if not glm_api_key:
+        try:
+            glm_api_key = st.secrets.get("GLM_API_KEY", "")
+        except Exception:
+            pass
+    
     use_glm = bool(glm_api_key.strip())
     if use_glm:
-        import os
-        os.environ["GLM_API_KEY"] = glm_api_key.strip()
         st.success("✅ 已配置 GLM API Key，将使用大模型生成摘要。")
     else:
-        st.info("未填写 API Key，使用离线抽取式摘要。")
+        st.info("未配置 API Key，使用离线抽取式摘要。")
+        st.caption("💡 请在 Streamlit Cloud Secrets 或环境变量中配置 GLM_API_KEY")
 
     if st.button("🗑️ 清除缓存"):
         st.cache_resource.clear()
@@ -263,6 +265,17 @@ if input_mode != "批量文件处理" and "batch_texts" in st.session_state:
     del st.session_state["batch_texts"]
 
 
+# ============================================================
+# 初始化 session_state
+# ============================================================
+if "recognition_done" not in st.session_state:
+    st.session_state["recognition_done"] = False
+if "recognized_text" not in st.session_state:
+    st.session_state["recognized_text"] = ""
+if "recognized_entities" not in st.session_state:
+    st.session_state["recognized_entities"] = []
+if "recognized_report" not in st.session_state:
+    st.session_state["recognized_report"] = None
 
 
 # ============================================================
@@ -272,6 +285,30 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
     try:
         with st.spinner(f"正在使用 {ner_backend.upper()} 引擎识别实体，请稍候..."):
             entities = extract_entities(text, backend=ner_backend)
+            
+            # 保存到 session_state
+            st.session_state["recognition_done"] = True
+            st.session_state["recognized_text"] = text
+            st.session_state["recognized_entities"] = entities
+            st.session_state["recognized_report"] = generate_report(text, entities, use_glm=use_glm)
+            
+            st.rerun()  # 重新运行以显示结果
+    except Exception as e:
+        st.error(f"识别失败：{e}")
+
+
+# 如果已经识别过，显示结果
+if st.session_state["recognition_done"] and st.session_state["recognized_text"]:
+    text = st.session_state["recognized_text"]
+    entities = st.session_state["recognized_entities"]
+    report = st.session_state["recognized_report"]
+    
+    # 显示识别结果（与原逻辑相同）
+    if not entities:
+        st.info("未识别到实体，请检查输入内容或更换文章。")
+    else:
+        engine_name = "智谱 GLM-5.2" if ner_backend == "glm" else "jieba 离线规则"
+        st.success(f"识别到 {len(entities)} 个实体 · 当前引擎：{engine_name}")
 
         if not entities:
             st.info("未识别到实体，请检查输入内容或更换文章。")
@@ -485,8 +522,6 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
                         st.session_state["chat_round"] = 0
                         st.session_state["chat_initialized"] = False
                         st.rerun()
-    except Exception as e:
-        st.error(f"识别失败：{e}")
 
 
 # ============================================================
