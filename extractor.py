@@ -33,11 +33,38 @@ def parse_html(html_text):
         tag.decompose()
 
     title = ""
+    
+    # 尝试多种标题提取方式（按优先级）
+    # 1. 微信公众号文章标题（常见格式）
     title_tag = soup.find("h2", class_="rich_media_title")
     if not title_tag:
+        title_tag = soup.find("h1", class_="rich_media_title")
+    if not title_tag:
+        title_tag = soup.find(class_="rich_media_title")
+    
+    # 2. 尝试其他常见的标题 class
+    if not title_tag:
+        for class_name in ["article-title", "post-title", "entry-title", "title", "news-title"]:
+            title_tag = soup.find(class_=class_name)
+            if title_tag:
+                break
+    
+    # 3. 尝试 h1 标签
+    if not title_tag:
+        title_tag = soup.find("h1")
+    
+    # 4. 尝试 h2 标签
+    if not title_tag:
+        title_tag = soup.find("h2")
+    
+    # 5. 最后尝试 title 标签
+    if not title_tag:
         title_tag = soup.find("title")
+    
     if title_tag:
         title = title_tag.get_text(strip=True)
+        # 清理标题中的多余空格和换行
+        title = re.sub(r'\s+', ' ', title).strip()
 
     content = soup.find("div", id="js_content")
     if content:
