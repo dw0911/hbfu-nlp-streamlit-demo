@@ -439,7 +439,8 @@ elif input_mode == "URL 抓取":
                 st.info("已提取正文，未获取到标题。")
         except Exception as e:
             st.error(f"抓取失败：{e}")
-    
+            st.info("💡 该网站可能存在反爬机制，建议更换为“粘贴文本”或“上传文件”方式导入内容。")
+
     # 如果已经抓取过，显示内容
     if st.session_state["fetched_text"]:
         text = st.text_area("正文（可编辑）", value=st.session_state["fetched_text"], height=300, key="url_text")
