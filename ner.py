@@ -328,10 +328,18 @@ class NEREngine:
 
                 # 自动下载并安装中文模型（首次部署或模型缺失时）
                 if not spacy.util.is_package("zh_core_web_sm"):
-                    subprocess.check_call(
-                        [sys.executable, "-m", "spacy", "download", "zh_core_web_sm"],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    )
+                    # 优先用 pip 直接安装 PyPI 上的模型包，比 spacy download 更可靠
+                    try:
+                        subprocess.check_call(
+                            [sys.executable, "-m", "pip", "install", "zh-core-web-sm"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                        )
+                    except Exception:
+                        # 回退到 spacy download（覆盖 GitHub releases 源）
+                        subprocess.check_call(
+                            [sys.executable, "-m", "spacy", "download", "zh_core_web_sm"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                        )
 
                 # 尝试加载，numpy 不兼容时强制重建 spaCy
                 try:

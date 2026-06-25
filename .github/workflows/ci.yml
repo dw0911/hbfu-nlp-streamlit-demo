@@ -37,7 +37,7 @@ jobs:
 
       - name: Smoke test core modules
         run: |
-          python -c "import ocr; print('ocr ok:', ocr._RAPIDOCR_AVAILABLE)"
+          python -c "import ocr; print('ocr ok:', ocr._OCR_AVAILABLE)"
           python -c "import ner; print('ner ok')"
           python -c "import summarizer; print('summarizer ok')"
           python -c "import visualizer; print('visualizer ok')"
