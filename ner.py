@@ -31,204 +31,45 @@ def _get_glm_api_key():
         return ""
 
 # ============================================================
-# 领域词典：河北金融学院官方公众号常见实体
+# 领域词典：通用中文实体词典
 # ============================================================
 
-HBFU_CORE_ORGS = [
-    "河北金融学院",
-    "党委",
-    "校长办公室",
-    "教务处",
-    "学生处",
-    "科研处",
-    "财务处",
-    "人事处",
-    "招生就业处",
-    "国际合作与交流处",
-    "团委",
-    "工会",
-    "图书馆",
-    "信息中心",
-    "后勤管理处",
-    "保卫处",
-    "金融系",
-    "会计系",
-    "保险系",
-    "管理系",
-    "经济贸易系",
-    "计算机系",
-    "外语系",
-    "法律系",
-    "文传系",
-    "国际教育学院",
-    "继续教育学院",
-    "马克思主义学院",
-    "体育教学部",
-    "学生会",
-    "社团联合会",
-    "青年志愿者协会",
-    "红十字会",
-    "心理协会",
-    "创业协会",
-    "辩论队",
-    "广播台",
-    "大学生通讯社",
+# 常见组织机构类型
+COMMON_ORGS = [
+    "公司", "集团", "企业", "银行", "医院", "学校", "大学", "学院", "研究所", "研究院",
+    "协会", "基金会", "委员会", "中心", "部", "处", "科", "办公室", "局", "厅", "署",
+    "党委", "政府", "厅", "局", "法院", "检察院", "人大", "政协", "工会", "团委",
 ]
 
-HBFU_EXTERNAL_ORGS = [
-    "中国人民银行",
-    "国家金融监督管理总局",
-    "中国证监会",
-    "中国银保监会",
-    "河北省教育厅",
-    "保定市教育局",
-    "保定市",
-    "河北省",
-    "河北金融学院",
-    "清华大学",
-    "北京大学",
-    "中国人民大学",
-    "中央财经大学",
-    "对外经济贸易大学",
-    "河北大学",
-    "河北农业大学",
-    "保定学院",
+# 常见地点类型
+COMMON_LOCATIONS = [
+    "省", "市", "区", "县", "镇", "乡", "村", "街道", "路", "街", "大道", "巷", "号",
+    "大厦", "楼", "广场", "公园", "机场", "车站", "港口", "图书馆", "博物馆", "体育馆",
+    "学校", "医院", "商场", "酒店", "餐厅", "公园", "景区", "校园", "校区",
 ]
 
-HBFU_LOCATIONS = [
-    "保定",
-    "恒祥",
-    "金院",
-    "图书馆",
-    "教学楼",
-    "实验楼",
-    "体育馆",
-    "学生公寓",
-    "食堂",
-    "报告厅",
-    "会议室",
-    "礼堂",
-    "操场",
-    "南门",
-    "北门",
-    "西门",
-    "东门",
-    "校园",
-    "大学生活动中心",
-    "众创空间",
-    "孵化基地",
-    "实训中心",
-    "金融中心",
+# 常见活动/事件类型
+COMMON_EVENTS = [
+    "会议", "论坛", "峰会", "研讨会", "座谈会", "讲座", "培训", "展览", "展会",
+    "比赛", "竞赛", "大赛", "运动会", "节", "庆典", "典礼", "仪式", "开幕式", "闭幕式",
+    "发布会", "发布会", "新闻发布会", "产品发布会", "年会", "晚会", "舞会", "聚会",
+    "招聘会", "宣讲会", "双选会", "面试", "笔试", "考试", "比赛", "评选", "表彰",
+    "签约仪式", "启动仪式", "竣工仪式", "开业典礼", "婚礼", "葬礼",
 ]
 
-HBFU_EVENTS = [
-    "讲座",
-    "论坛",
-    "学术报告",
-    "报告会",
-    "研讨会",
-    "座谈会",
-    "招聘会",
-    "宣讲会",
-    "双选会",
-    "供需见面会",
-    "比赛",
-    "竞赛",
-    "大赛",
-    "挑战赛",
-    "创新创业大赛",
-    "运动会",
-    "篮球赛",
-    "足球赛",
-    "排球赛",
-    "乒乓球赛",
-    "羽毛球赛",
-    "晚会",
-    "典礼",
-    "仪式",
-    "开幕式",
-    "闭幕式",
-    "展览",
-    "展演",
-    "志愿服务",
-    "社会实践",
-    "三下乡",
-    "支教",
-    "实习",
-    "见习",
-    "军训",
-    "迎新",
-    "毕业典礼",
-    "开学典礼",
-    "升旗仪式",
-    "主题党日",
-    "主题团日",
-    "班会",
+# 常见专业/学科
+COMMON_MAJORS = [
+    "经济学", "金融学", "会计学", "管理学", "法学", "文学", "理学", "工学", "医学", "农学",
+    "计算机科学", "软件工程", "电子信息", "机械工程", "土木工程", "建筑学", "艺术设计", "音乐", "体育",
+    "哲学", "历史学", "教育学", "心理学", "新闻学", "传播学", "社会学", "政治学", "国际关系",
 ]
 
-HBFU_MAJORS = [
-    "金融学",
-    "会计学",
-    "保险学",
-    "财务管理",
-    "审计学",
-    "国际经济与贸易",
-    "经济学",
-    "经济统计学",
-    "计算机科学与技术",
-    "软件工程",
-    "网络工程",
-    "数据科学与大数据技术",
-    "英语",
-    "商务英语",
-    "法学",
-    "汉语言文学",
-    "新闻学",
-    "工商管理",
-    "市场营销",
-    "人力资源管理",
-    "电子商务",
-    "统计学",
-    "数学与应用数学",
-    "应用统计学",
-    "投资学",
-    "信用管理",
-    "金融工程",
-    "金融科技",
-    "精算学",
-    "劳动与社会保障",
-    "行政管理",
-    "信息与计算科学",
-]
-
-HBFU_WORK_TITLES = [
-    "党委书记",
-    "校长",
-    "副校长",
-    "党委副书记",
-    "纪委书记",
-    "院长",
-    "副院长",
-    "系主任",
-    "副主任",
-    "教授",
-    "副教授",
-    "讲师",
-    "助教",
-    "辅导员",
-    "班主任",
-    "处长",
-    "副处长",
-    "科长",
-    "书记",
-    "副书记",
-    "团委书记",
-    "学生会主席",
-    "社团负责人",
-    "秘书长",
-    "主任",
-    "总工程师",
-    "总会计师",
+# 常见职务/职称
+COMMON_WORK_TITLES = [
+    "董事长", "总经理", "总裁", "CEO", "总监", "经理", "主管", "主任", "部长", "处长",
+    "教授", "副教授", "讲师", "助教", "研究员", "副研究员", "工程师", "高级工程师",
+    "书记", "副书记", "委员", "代表", "主席", "副主席", "秘书长", "副秘书长",
+    "院长", "副院长", "校长", "副校长", "所长", "副所长", "科长", "副科长",
 ]
 
 ORG_KEYWORDS = [
@@ -302,7 +143,7 @@ _PERCENT_PATTERNS = [
 
 def _add_domain_words():
     """把领域词添加到 jieba 用户词典，提高切分与识别准确率。"""
-    for word in set(HBFU_CORE_ORGS + HBFU_EXTERNAL_ORGS + HBFU_LOCATIONS + HBFU_EVENTS + HBFU_MAJORS + HBFU_WORK_TITLES):
+    for word in set(COMMON_ORGS + COMMON_LOCATIONS + COMMON_EVENTS + COMMON_MAJORS + COMMON_WORK_TITLES):
         if word and len(word) >= 2:
             jieba.add_word(word, freq=1000)
 
@@ -333,43 +174,38 @@ class NEREngine:
     def _domain_classify(self, word, flag):
         if not word or len(word) < 2:
             return None
-        if word in HBFU_CORE_ORGS or word in HBFU_EXTERNAL_ORGS:
+        # 检查通用领域词典
+        if any(org in word for org in COMMON_ORGS):
             return "ORG"
-        if word in HBFU_LOCATIONS:
+        if any(loc in word for loc in COMMON_LOCATIONS):
             return "LOC"
-        if word in HBFU_EVENTS:
+        if any(event in word for event in COMMON_EVENTS):
             return "EVENT"
-        if word in HBFU_MAJORS:
+        if any(major in word for major in COMMON_MAJORS):
             return "MAJOR"
-        if word in HBFU_WORK_TITLES:
+        if any(work in word for work in COMMON_WORK_TITLES):
             return "WORK"
+        
+        # 基于词性标注的分类
         if flag.startswith("nr") and self._is_chinese_name(word):
             return "PERSON"
         if flag == "ns":
             return "LOC"
         if flag == "nt":
             return "ORG"
-        if flag == "nw":
-            if any(word.endswith(s) for s in ORG_KEYWORDS):
-                return "ORG"
-            if any(word.endswith(s) for s in LOC_KEYWORDS):
-                return "LOC"
-            if any(word.endswith(s) for s in EVENT_KEYWORDS):
-                return "EVENT"
-            if any(word.endswith(s) for s in MAJOR_KEYWORDS):
-                return "MAJOR"
-            if any(word.endswith(s) for s in WORK_KEYWORDS):
-                return "WORK"
-        if any(word.endswith(s) for s in ORG_KEYWORDS) or any(s in word for s in ["公司", "集团", "银行", "学院", "协会"]):
+        
+        # 基于关键词后缀的分类
+        if any(word.endswith(s) for s in ORG_KEYWORDS):
             return "ORG"
         if any(word.endswith(s) for s in LOC_KEYWORDS):
             return "LOC"
         if any(word.endswith(s) for s in EVENT_KEYWORDS):
             return "EVENT"
-        if any(word.endswith(s) for s in ["专业", "系", "学科", "课程"]):
+        if any(word.endswith(s) for s in MAJOR_KEYWORDS):
             return "MAJOR"
         if any(word.endswith(s) for s in WORK_KEYWORDS):
             return "WORK"
+        
         return None
 
     def _extract_by_jieba(self, text):

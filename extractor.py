@@ -27,54 +27,68 @@ def fetch_url_text(url, timeout=20):
 
 
 def parse_html(html_text):
-    """解析 HTML，优先提取 #js_content 区域。"""
+    """解析 HTML，提取正文内容。支持多种网站结构。"""
     soup = BeautifulSoup(html_text, "html.parser")
-    for tag in soup(["script", "style", "noscript", "iframe", "svg"]):
+    for tag in soup(["script", "style", "noscript", "iframe", "svg", "nav", "footer", "header"]):
         tag.decompose()
 
     title = ""
     
     # 尝试多种标题提取方式（按优先级）
-    # 1. 微信公众号文章标题（常见格式）
-    title_tag = soup.find("h2", class_="rich_media_title")
-    if not title_tag:
-        title_tag = soup.find("h1", class_="rich_media_title")
-    if not title_tag:
-        title_tag = soup.find(class_="rich_media_title")
+    # 1. 常见文章标题 class
+    for class_name in ["rich_media_title", "article-title", "post-title", "entry-title", "title", "news-title", "headline"]:
+        title_tag = soup.find(class_=class_name)
+        if title_tag:
+            title = title_tag.get_text(strip=True)
+            break
     
-    # 2. 尝试其他常见的标题 class
-    if not title_tag:
-        for class_name in ["article-title", "post-title", "entry-title", "title", "news-title"]:
-            title_tag = soup.find(class_=class_name)
+    # 2. 尝试 h1, h2 标签
+    if not title:
+        for tag_name in ["h1", "h2"]:
+            title_tag = soup.find(tag_name)
             if title_tag:
+                title = title_tag.get_text(strip=True)
                 break
     
-    # 3. 尝试 h1 标签
-    if not title_tag:
-        title_tag = soup.find("h1")
-    
-    # 4. 尝试 h2 标签
-    if not title_tag:
-        title_tag = soup.find("h2")
-    
-    # 5. 最后尝试 title 标签
-    if not title_tag:
+    # 3. 最后尝试 title 标签
+    if not title:
         title_tag = soup.find("title")
+        if title_tag:
+            title = title_tag.get_text(strip=True)
     
-    if title_tag:
-        title = title_tag.get_text(strip=True)
+    if title:
         # 清理标题中的多余空格和换行
         title = re.sub(r'\s+', ' ', title).strip()
 
+    # 尝试多种正文内容提取方式（按优先级）
+    content = None
+    
+    # 1. 微信公众号文章
     content = soup.find("div", id="js_content")
+    
+    # 2. 常见文章容器
+    if not content:
+        for class_name in ["article-content", "post-content", "entry-content", "content", "article-body", "text"]:
+            content = soup.find(class_=class_name)
+            if content:
+                break
+    
+    # 3. article 标签
+    if not content:
+        content = soup.find("article")
+    
+    # 4. main 标签
+    if not content:
+        content = soup.find("main")
+    
+    # 5. 兜底：使用整个页面
+    if not content:
+        content = soup
+    
     if content:
         text = content.get_text(separator="\n", strip=True)
     else:
-        article = soup.find("article")
-        if article:
-            text = article.get_text(separator="\n", strip=True)
-        else:
-            text = soup.get_text(separator="\n", strip=True)
+        text = soup.get_text(separator="\n", strip=True)
 
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return title, "\n".join(lines)
