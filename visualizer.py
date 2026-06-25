@@ -135,44 +135,56 @@ def build_cooccurrence(entities, window_size=50):
     return nodes, edges
 
 
-def build_pyvis_html(entities, window_size=50, height=600):
-    """用 pyvis 生成实体共现网络图 HTML。"""
+def build_pyvis_html(entities, window_size=50, height=600, max_nodes=80):
+    """用 pyvis 生成实体共现网络图 HTML。节点过多时自动截断，避免前端卡死。"""
     try:
         from pyvis.network import Network
     except ImportError:
         return None
 
-    nodes, edges = build_cooccurrence(entities, window_size)
-    if not nodes:
+    try:
+        nodes, edges = build_cooccurrence(entities, window_size)
+        if not nodes:
+            return None
+
+        # 限制节点数量，防止生成的 HTML 过大导致 Streamlit 前端崩溃
+        if len(nodes) > max_nodes:
+            nodes.sort(key=lambda x: x["count"], reverse=True)
+            top_nodes = nodes[:max_nodes]
+            node_ids = {n["id"] for n in top_nodes}
+            edges = [e for e in edges if e["source"] in node_ids and e["target"] in node_ids]
+            nodes = top_nodes
+
+        net = Network(height=f"{height}px", width="100%", bgcolor="#ffffff", font_color="#333333", notebook=False)
+        net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=120, spring_strength=0.05)
+
+        type_color = {
+            "PERSON": "#ffadad",
+            "ORG": "#caffbf",
+            "LOC": "#9bf6ff",
+            "EVENT": "#ffc6ff",
+            "MAJOR": "#fdffb6",
+        }
+
+        for node in nodes:
+            size = 15 + min(node["count"] * 3, 30)
+            net.add_node(
+                node["id"],
+                label=node["label"],
+                title=f"{node['label']} ({node['type']})\n出现次数：{node['count']}",
+                color=type_color.get(node["type"], "#dddddd"),
+                size=size,
+            )
+
+        for edge in edges:
+            width = 1 + min(edge["weight"], 5)
+            net.add_edge(edge["source"], edge["target"], value=edge["weight"], title=f"共现次数：{edge['weight']}")
+
+        html = net.generate_html()
+        return html
+    except Exception:
         return None
 
-    net = Network(height=f"{height}px", width="100%", bgcolor="#ffffff", font_color="#333333", notebook=False)
-    net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=120, spring_strength=0.05)
-
-    type_color = {
-        "PERSON": "#ffadad",
-        "ORG": "#caffbf",
-        "LOC": "#9bf6ff",
-        "EVENT": "#ffc6ff",
-        "MAJOR": "#fdffb6",
-    }
-
-    for node in nodes:
-        size = 15 + min(node["count"] * 3, 30)
-        net.add_node(
-            node["id"],
-            label=node["label"],
-            title=f"{node['label']} ({node['type']})\n出现次数：{node['count']}",
-            color=type_color.get(node["type"], "#dddddd"),
-            size=size,
-        )
-
-    for edge in edges:
-        width = 1 + min(edge["weight"], 5)
-        net.add_edge(edge["source"], edge["target"], value=edge["weight"], title=f"共现次数：{edge['weight']}")
-
-    html = net.generate_html()
-    return html
 
 
 def build_cooccurrence_matrix(entities, focus_types=None):

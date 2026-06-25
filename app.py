@@ -327,9 +327,22 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
                     st.subheader("🕸️ 实体共现网络")
                     cooccur_df = build_cooccurrence_matrix(entities)
                     if cooccur_df is not None and not cooccur_df.empty:
-                        pyvis_html = build_pyvis_html(entities, height=520)
-                        if pyvis_html:
-                            st.components.v1.html(pyvis_html, height=540)
+                        # 优先尝试交互式 pyvis，失败或不可用时回退到静态网络图
+                        try:
+                            pyvis_html = build_pyvis_html(entities, height=520)
+                            if pyvis_html:
+                                st.components.v1.html(pyvis_html, height=540)
+                            else:
+                                st.info("交互式网络不可用，已切换为静态网络图。")
+                                net_img = build_mpl_network(entities, figsize=(10, 6))
+                                if net_img:
+                                    st.image(net_img, use_container_width=True)
+                        except Exception as e:
+                            st.warning(f"交互式网络加载失败，已切换为静态网络图：{e}")
+                            net_img = build_mpl_network(entities, figsize=(10, 6))
+                            if net_img:
+                                st.image(net_img, use_container_width=True)
+
                         st.markdown("**共现矩阵 Top 20**")
                         st.dataframe(cooccur_df.head(20), use_container_width=True, height=260)
                     else:

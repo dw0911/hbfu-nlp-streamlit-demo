@@ -12,10 +12,17 @@ except Exception as e:
 
 
 def load_ocr():
-    """加载 RapidOCR 引擎。若当前环境缺少依赖则返回 None。"""
+    """加载 RapidOCR 引擎。若当前环境缺少依赖或初始化失败则返回 None。"""
     if not _RAPIDOCR_AVAILABLE:
         return None
-    return RapidOCR()
+    try:
+        return RapidOCR()
+    except Exception as e:
+        global _RAPIDOCR_AVAILABLE, _RAPIDOCR_ERROR
+        _RAPIDOCR_AVAILABLE = False
+        _RAPIDOCR_ERROR = str(e)
+        return None
+
 
 
 def extract_text_from_image(image, engine=None):
