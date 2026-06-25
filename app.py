@@ -8,6 +8,7 @@ import io
 import base64
 import pandas as pd
 import streamlit as st
+import altair as alt
 from PIL import Image
 from collections import Counter
 
@@ -208,45 +209,95 @@ def get_ocr():
 
 
 def highlight_html(text, entities):
-    """把实体在原文字符位置上用色块高亮。"""
-    entities = sorted(entities, key=lambda x: x["start"])
+    """把实体在原文字符位置上用色块高亮，支持位置容错与嵌套实体。"""
+    if not text or not entities:
+        return _html_escape(text) if text else ""
+
+    def _make_span(word, typ, color):
+        label = LABEL_MAP.get(typ, typ)
+        hex_color = color.lstrip("#")
+        try:
+            if len(hex_color) == 6:
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                brightness = (r * 299 + g * 587 + b * 114) / 1000
+                text_color = "#ffffff" if brightness < 140 else "#000000"
+            else:
+                text_color = "#000000"
+        except ValueError:
+            text_color = "#000000"
+        safe_word = _html_escape(word)
+        return (
+            f'<span style="background-color:{color};color:{text_color};'
+            f'padding:2px 7px;border-radius:5px;margin:0 2px;'
+            f'font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,0.18);'
+            f'border:1.5px solid rgba(0,0,0,0.15);" '
+            f'title="{label}（{safe_word}）">{safe_word}</span>'
+        )
+
+    # 先尝试基于 start/end 位置精确高亮
+    entities = sorted(entities, key=lambda x: (x.get("start", 0), -x.get("end", 0)))
     parts = []
     pos = 0
+    highlighted_any = False
+
     for ent in entities:
-        s, e = ent["start"], ent["end"]
-        typ = ent["entity"]
+        s = ent.get("start", -1)
+        e = ent.get("end", -1)
+        typ = ent.get("entity", "")
+        word = ent.get("word", "")
+        color = TYPE_COLORS.get(typ, "#dddddd")
+
+        # 位置无效时，尝试在原文中查找该词
+        if s < 0 or e > len(text) or s >= e or text[s:e] != word:
+            if word:
+                found = text.find(word, pos)
+                if found == -1:
+                    found = text.find(word)
+                if found != -1:
+                    s, e = found, found + len(word)
+                else:
+                    continue
+            else:
+                continue
+
+        # 重叠处理：跳过完全包含在已处理区域内的；部分重叠则裁剪
         if s < pos:
-            continue
+            if e <= pos:
+                continue
+            s = pos
+
         if s > pos:
             parts.append(_html_escape(text[pos:s]))
-        color = TYPE_COLORS.get(typ, "#dddddd")
-        label = LABEL_MAP.get(typ, typ)
-        # 根据背景色亮度自动选择文字颜色（深色背景用白字，浅色背景用黑字）
-        # 简单启发：颜色 hex 转 RGB，计算相对亮度
-        hex_color = color.lstrip("#")
-        if len(hex_color) == 6:
-            r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
-        else:
-            r, g, b = 128, 128, 128
-        brightness = (r * 299 + g * 587 + b * 114) / 1000
-        text_color = "#ffffff" if brightness < 128 else "#000000"
-        # 高对比度的高亮样式
-        parts.append(
-            f'<span style="background-color: {color}; '
-            f'color: {text_color}; '
-            f'padding: 2px 7px; '
-            f'border-radius: 5px; '
-            f'margin: 0 2px; '
-            f'font-weight: 700; '
-            f'box-shadow: 0 1px 3px rgba(0,0,0,0.18); '
-            f'border: 1.5px solid rgba(0,0,0,0.15); '
-            f'title="{label}（{text[s:e]}）";">'
-            f'{_html_escape(text[s:e])}</span>'
-        )
+
+        span_word = text[s:e] if s < len(text) and e <= len(text) else word
+        if span_word:
+            parts.append(_make_span(span_word, typ, color))
+            highlighted_any = True
         pos = e
+
     if pos < len(text):
         parts.append(_html_escape(text[pos:]))
-    return "".join(parts)
+
+    result = "".join(parts)
+
+    # 兜底：如果按位置没有成功高亮任何实体，则按词文本做简单高亮
+    if not highlighted_any:
+        unique_entities = {}
+        for ent in entities:
+            word = ent.get("word", "")
+            typ = ent.get("entity", "")
+            if word and word not in unique_entities:
+                unique_entities[word] = TYPE_COLORS.get(typ, "#dddddd")
+        # 按词长降序，避免短词覆盖长词
+        for word, color in sorted(unique_entities.items(), key=lambda x: -len(x[0])):
+            safe_word = _html_escape(word)
+            span = _make_span(safe_word, typ, color)
+            # 仅替换未高亮的部分，避免破坏已生成的 span
+            result = result.replace(safe_word, span)
+
+    return result
 
 
 # ============================================================
@@ -304,10 +355,14 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if st.button("🗑️ 一键重置", key="reset_all"):
-        # 清除所有 session_state
+        # 保留用户偏好设置，其余全部清空
+        preserved = {"input_mode_radio", "ner_backend_select"}
         for key in list(st.session_state.keys()):
-            if key != "input_mode_radio" and key != "ner_backend_select":  # 保留输入方式和引擎选择
+            if key not in preserved:
                 del st.session_state[key]
+        # 显式将文本类输入框重置为空，确保 URL、正文等输入项被清空
+        for key in ["text_input", "url_input", "url_text", "file_text"]:
+            st.session_state[key] = ""
         st.success("已重置所有内容，可以重新开始。")
         st.rerun()
 
@@ -528,13 +583,26 @@ if st.session_state["recognition_done"] and st.session_state["recognized_text"]:
             viz_col1, viz_col2 = st.columns([2, 3])
             with viz_col1:
                 st.subheader("实体类型分布")
-                type_counts = df["类型"].value_counts()
-                st.bar_chart(type_counts, use_container_width=True)
+                type_counts = df["类型"].value_counts().reset_index()
+                type_counts.columns = ["实体类型", "数量"]
+                chart_type = alt.Chart(type_counts).mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4).encode(
+                    x=alt.X("实体类型:N", sort="-y", axis=alt.Axis(labelAngle=0, title="实体类型")),
+                    y=alt.Y("数量:Q", title="数量"),
+                    color=alt.Color("实体类型:N", legend=None),
+                    tooltip=["实体类型", "数量"],
+                ).properties(height=280)
+                st.altair_chart(chart_type, use_container_width=True)
 
                 st.subheader("高频实体 Top 10")
                 top_entities = df["实体"].value_counts().head(10).reset_index()
                 top_entities.columns = ["实体", "出现次数"]
-                st.bar_chart(top_entities.set_index("实体"), use_container_width=True)
+                chart_top = alt.Chart(top_entities).mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4).encode(
+                    x=alt.X("实体:N", sort="-y", axis=alt.Axis(labelAngle=0, title="实体")),
+                    y=alt.Y("出现次数:Q", title="出现次数"),
+                    color=alt.Color("实体:N", legend=None),
+                    tooltip=["实体", "出现次数"],
+                ).properties(height=280)
+                st.altair_chart(chart_top, use_container_width=True)
 
             with viz_col2:
                 st.subheader("☁️ 词云图")

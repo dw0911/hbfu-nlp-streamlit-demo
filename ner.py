@@ -209,14 +209,18 @@ class NEREngine:
         return None
 
     def _extract_by_jieba(self, text):
+        """用 jieba 分词识别实体，按分词顺序精确累计每个词的位置。"""
         entities = []
-        pos = 0
+        idx = 0
         for word, flag in pseg.cut(text):
-            start = text.find(word, pos)
-            if start == -1:
-                start = pos
-            end = start + len(word)
-            pos = end
+            # 跳过原文中当前位置前无法匹配的字符（如空格、换行、特殊符号）
+            while idx < len(text) and text[idx] != word[0]:
+                idx += 1
+            if idx >= len(text):
+                break
+            start = idx
+            end = idx + len(word)
+            idx = end
             ent_type = self._domain_classify(word, flag)
             if ent_type:
                 entities.append({
