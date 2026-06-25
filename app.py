@@ -252,7 +252,7 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
         if not entities:
             st.info("未识别到实体，请检查输入内容或更换文章。")
         else:
-            st.success(f"识别到 {len(entities)} 个实体 · 当前引擎：{ner_engine.info}")
+            st.success(f"识别到 {len(entities)} 个实体 · 当前引擎：jieba 离线规则")
 
             df = pd.DataFrame(entities)
             df["类型"] = df["entity"].map(LABEL_MAP).fillna(df["entity"])
