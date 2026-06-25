@@ -382,7 +382,8 @@ text = ""
 file_name = ""
 
 if input_mode == "粘贴文本":
-    text = st.text_area("请输入需要识别的文本", height=300, placeholder="粘贴中文文章正文...", key="text_input", help="输入或粘贴完成后，点击页面其他区域或按 Ctrl+Enter 结束输入")
+    text = st.text_area("请输入需要识别的文本", height=300, placeholder="粘贴中文文章正文...", key="text_input")
+    st.caption("输入或粘贴完成后，点击页面其他区域或按 Ctrl+Enter 结束输入")
 
 elif input_mode == "上传图片（OCR）":
     img_file = st.file_uploader("上传文章截图（PNG / JPG）", type=["png", "jpg", "jpeg"], key="img_upload")
@@ -402,7 +403,8 @@ elif input_mode == "上传图片（OCR）":
 
 
 elif input_mode == "URL 抓取":
-    url = st.text_input("文章 URL", placeholder="请输入文章网址...", key="url_input", help="输入完成后按回车确认")
+    url = st.text_input("文章 URL", placeholder="请输入文章网址...", key="url_input")
+    st.caption("输入完成后按回车确认")
     
     # 初始化 session_state 用于缓存 URL 抓取结果
     if "fetched_url" not in st.session_state:
