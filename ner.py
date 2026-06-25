@@ -306,28 +306,36 @@ _add_domain_words()
 
 
 class NEREngine:
-    """NER 引擎，基于 jieba + 领域词典 + 规则，零外部模型依赖，适合云部署。"""
+    """
+    NER 引擎，支持三种后端：
+      - "lac"  ：百度 LAC（预训练模型，pip 安装即内置，精度最高，推荐）
+      - "jieba"：jieba + 领域词典 + 规则（零依赖，离线可用）
+      - "auto" ：自动选 lac（可用时）-> jieba（回退）
+    """
 
-    def __init__(self, backend="jieba"):
-        self.backend = "jieba"
+    def __init__(self, backend="auto"):
+        self.backend = backend
+        self.lac_nlp = None
         self.spacy_nlp = None
-        self.info = "jieba 离线规则（领域词典 + 规则）"
+        self.info = ""
 
-        if backend == "spacy":
+        # ---- 1. 尝试加载 LAC ----
+        if backend in ("auto", "lac"):
             try:
-                import spacy
-                if spacy.util.is_package("zh_core_web_sm"):
-                    self.spacy_nlp = spacy.load("zh_core_web_sm")
-                    self.backend = "spacy"
-                    self.info = "spaCy zh_core_web_sm"
-                else:
-                    raise RuntimeError(
-                        "spaCy 中文模型未安装，请运行：pip install "
-                        "https://github.com/explosion/spacy-models/releases/download/"
-                        "zh_core_web_sm-3.7.0/zh_core_web_sm-3.7.0-py3-none-any.whl"
-                    )
-            except Exception as e:
-                raise RuntimeError(f"spaCy 加载失败：{e}")
+                from LAC import LAC
+                self.lac_nlp = LAC(mode="seg")
+                self.lac_nlp.load_model()
+                self.backend = "lac"
+                self.info = "百度 LAC（预训练模型，pip 内置）"
+            except Exception as e_lac:
+                if backend == "lac":
+                    raise RuntimeError(f"LAC 加载失败：{e_lac}")
+                # auto 模式：fall through 到 jieba
+
+        # ---- 2. 回退 / 直选 jieba ----
+        if self.backend != "lac":
+            self.backend = "jieba"
+            self.info = "jieba 离线规则（领域词典 + 规则）"
 
 
     def _is_chinese_name(self, word):
@@ -415,6 +423,41 @@ class NEREngine:
                 })
         return entities
 
+    def _extract_by_lac(self, text):
+        """用百度 LAC 做实体识别。LAC 输出格式：words, tags = lac.run(text)"""
+        entities = []
+        if self.lac_nlp is None:
+            return entities
+        try:
+            # LAC.run() 返回 (words列表, tags列表)
+            words, tags = self.lac_nlp.run(text)
+            # 将分词结果还原为原文中的起止位置
+            pos = 0
+            for word, tag in zip(words, tags):
+                start = text.find(word, pos)
+                if start == -1:
+                    start = pos
+                end = start + len(word)
+                pos = end
+                # LAC 专名标签：PER-人名，LOC-地名，ORG-机构名，TIME-时间
+                tag_map = {
+                    "PER": "PERSON",
+                    "LOC": "LOC",
+                    "ORG": "ORG",
+                }
+                ent_type = tag_map.get(tag)
+                if ent_type:
+                    entities.append({
+                        "entity": ent_type,
+                        "score": 0.92,
+                        "word": word,
+                        "start": start,
+                        "end": end,
+                    })
+        except Exception:
+            pass
+        return entities
+
     def _extract_by_spacy(self, text):
         entities = []
         if self.spacy_nlp is None:
@@ -460,10 +503,12 @@ class NEREngine:
             return []
 
         entities = []
-        if self.backend == "spacy":
-            entities.extend(self._extract_by_spacy(text))
-        # spaCy 对专业、职务、活动识别有限，用 jieba 补充
-        entities.extend(self._extract_by_jieba(text))
+        if self.backend == "lac":
+            entities.extend(self._extract_by_lac(text))
+            # LAC 对领域专有实体（专业、职务、活动）识别有限，用 jieba 规则补充
+            entities.extend(self._extract_by_jieba(text))
+        else:
+            entities.extend(self._extract_by_jieba(text))
         entities.extend(self._extract_by_regex(text))
         entities = self._dedup_and_merge(entities)
         entities.sort(key=lambda x: x["start"])
