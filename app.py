@@ -25,47 +25,169 @@ st.set_page_config(
 )
 
 # ============================================================
-# 自定义样式：让界面更精美
+# 自定义样式：让界面更专业、精美
 # ============================================================
 st.markdown(
     """
     <style>
+    /* 全局样式 */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1200px;
+    }
+    
+    /* 主标题 */
     .main-header {
-        font-size: 2.4rem;
-        font-weight: 700;
-        color: #1a5276;
-        margin-bottom: 0.2rem;
+        font-size: 2.8rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
     }
+    
+    /* 副标题 */
     .sub-header {
-        font-size: 1rem;
-        color: #5d6d7e;
-        margin-bottom: 1.5rem;
+        font-size: 1.1rem;
+        color: #64748b;
+        margin-bottom: 2rem;
+        font-weight: 400;
     }
+    
+    /* 作者徽章 */
     .author-badge {
         display: inline-block;
-        background: linear-gradient(90deg, #1a5276, #2e86ab);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 0.9rem;
+        padding: 8px 18px;
+        border-radius: 25px;
+        font-size: 0.85rem;
         font-weight: 500;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     }
+    
+    /* 指标卡片 */
     .metric-card {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 16px;
-        border-left: 5px solid #2e86ab;
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+        border-left: 5px solid #667eea;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
     }
+    .metric-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    
+    /* 高亮文本区域 */
     .highlight-box {
-        max-height: 520px;
+        max-height: 550px;
         overflow-y: auto;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 16px;
-        line-height: 1.8;
-        background: #fafafa;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 20px;
+        line-height: 2;
+        background: #fefefe;
         font-size: 1.05rem;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    /* 侧边栏样式 */
+    .css-1d391kg {
+        background-color: #f8fafc;
+        border-right: 2px solid #e2e8f0;
+    }
+    
+    /* 按钮样式 */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .stButton > button:hover {
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        transform: translateY(-1px);
+    }
+    
+    /* 标签页样式 */
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border-radius: 8px 8px 0 0;
+        border: none;
+        padding: 10px 20px;
+        font-weight: 500;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background: #f1f5f9;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    /* 数据框样式 */
+    .stDataFrame {
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+    }
+    
+    /* 分割线 */
+    hr {
+        border: none;
+        height: 2px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        margin: 1.5rem 0;
+    }
+    
+    /* 标题样式 */
+    h1, h2, h3 {
+        color: #1e293b;
+        font-weight: 700;
+    }
+    
+    /* 警告框 */
+    .stAlert {
+        border-radius: 8px;
+        border: none;
+    }
+    
+    /* 成功消息 */
+    .stSuccess {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border-radius: 8px;
+    }
+    
+    /* 警告消息 */
+    .stWarning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border-radius: 8px;
+    }
+    
+    /* 错误消息 */
+    .stError {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border-radius: 8px;
+    }
+    
+    /* 信息消息 */
+    .stInfo {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border-radius: 8px;
     }
     </style>
     """,
@@ -99,9 +221,16 @@ def highlight_html(text, entities):
             parts.append(_html_escape(text[pos:s]))
         color = TYPE_COLORS.get(typ, "#dddddd")
         label = LABEL_MAP.get(typ, typ)
+        # 更专业的高亮样式
         parts.append(
-            f'<span style="background-color:{color}; padding:2px 5px; border-radius:4px; '
-            f'margin:0 2px; font-weight:500; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="{label}">'
+            f'<span style="background: linear-gradient(135deg, {color} 0%, {color}cc 100%); '
+            f'padding: 3px 8px; '
+            f'border-radius: 6px; '
+            f'margin: 0 3px; '
+            f'font-weight: 600; '
+            f'box-shadow: 0 2px 4px rgba(0,0,0,0.15); '
+            f'border: 1px solid {color}99; '
+            f'title="{label}";">'
             f'{_html_escape(text[s:e])}</span>'
         )
         pos = e
@@ -114,9 +243,18 @@ def highlight_html(text, entities):
 # 输入区
 # ============================================================
 with st.sidebar:
-    st.header("⚙️ 输入与设置")
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 20px; 
+                border-radius: 12px; 
+                margin-bottom: 20px;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);'>
+        <h2 style='color: white; margin: 0; font-size: 1.5rem;'>⚙️ 输入与设置</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
     input_mode = st.radio(
-        "输入方式",
+        "选择输入方式",
         ["粘贴文本", "上传图片（OCR）", "URL 抓取", "上传文件", "批量文件处理"],
         key="input_mode_radio"
     )
@@ -140,11 +278,20 @@ with st.sidebar:
             ner_backend = "jieba"
 
     st.markdown("---")
-    st.markdown("**ℹ️ 说明**")
-    st.markdown("- **NER 引擎**：GLM 大模型（在线）或 jieba 离线规则。")
-    st.markdown("- **大模型已自动配置**：无需手动填写 API Key。")
-    st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入方式。")
-    st.markdown("- 分析结果包含：实体识别、可视化分析、文章总结、智能对话四大功能。")
+    st.markdown("""
+    <div style='background: #f8fafc; 
+                padding: 15px; 
+                border-radius: 8px; 
+                border-left: 4px solid #667eea;'>
+        <p style='font-weight: 600; margin-bottom: 8px; color: #1e293b;'>ℹ️ 功能说明</p>
+        <ul style='margin: 0; padding-left: 20px; color: #64748b; font-size: 0.9rem;'>
+            <li>双引擎：GLM 大模型 / jieba 离线</li>
+            <li>自动配置 API Key</li>
+            <li>五种输入方式</li>
+            <li>四大分析功能</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
 
     if st.button("🗑️ 一键重置", key="reset_all"):
         # 清除所有 session_state

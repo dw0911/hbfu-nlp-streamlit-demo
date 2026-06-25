@@ -107,15 +107,15 @@ LABEL_MAP = {
 }
 
 TYPE_COLORS = {
-    "PERSON": "#ffadad",
-    "ORG": "#caffbf",
-    "LOC": "#9bf6ff",
-    "TIME": "#ffd6a5",
-    "EVENT": "#ffc6ff",
-    "MAJOR": "#fdffb6",
-    "WORK": "#bdb2ff",
-    "MONEY": "#ffffcc",
-    "PERCENT": "#e2f0cb",
+    "PERSON": "#ef4444",  # 红色 - 更醒目的红色
+    "ORG": "#10b981",     # 绿色 - 更醒目的绿色
+    "LOC": "#3b82f6",     # 蓝色 - 更醒目的蓝色
+    "TIME": "#f59e0b",    # 橙色 - 更醒目的橙色
+    "EVENT": "#8b5cf6",   # 紫色 - 更醒目的紫色
+    "MAJOR": "#06b6d4",   # 青色 - 更醒目的青色
+    "WORK": "#ec4899",    # 粉色 - 更醒目的粉色
+    "MONEY": "#84cc16",   # 黄绿色 - 更醒目的黄绿色
+    "PERCENT": "#6366f1", # 靛蓝色 - 更醒目的靛蓝色
 }
 
 # 正则模式：时间、金额、百分比
