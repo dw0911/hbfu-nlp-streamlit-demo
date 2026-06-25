@@ -236,6 +236,53 @@ def generate_report(text, entities, use_glm=False):
     return report
 
 
+def chat_with_article(text, history, user_input, model="glm-5.2", max_tokens=512):
+    """
+    与文章进行自由对话。
+    text: 文章内容
+    history: 对话历史列表，格式：[["用户消息", "AI回复"], ...]
+    user_input: 当前用户输入
+    返回：(ai_reply, updated_history)
+    """
+    api_key = _get_glm_api_key()
+    if not api_key:
+        return "⚠️ 未配置 GLM API Key，无法使用对话功能。", history
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, base_url=_ZHIPU_BASE_URL)
+
+        # 构建 messages
+        messages = [
+            {"role": "system", "content": f"你是一个智能助手，正在与用户讨论以下文章：\n\n{text[:4000]}\n\n请根据文章内容回答用户的问题，不要添加文章以外的信息。"},
+        ]
+
+        # 添加历史对话
+        for user_msg, ai_msg in history:
+            messages.append({"role": "user", "content": user_msg})
+            messages.append({"role": "assistant", "content": ai_msg})
+
+        # 添加当前用户输入
+        messages.append({"role": "user", "content": user_input})
+
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=0.3,
+        )
+
+        ai_reply = response.choices[0].message.content.strip()
+
+        # 更新历史
+        updated_history = history + [[user_input, ai_reply]]
+
+        return ai_reply, updated_history
+
+    except Exception as e:
+        return f"⚠️ 对话失败：{e}", history
+
+
 if __name__ == "__main__":
     sample = (
         "河北金融学院金融系于2024年5月15日在图书馆报告厅举办金融科技讲座。"

@@ -412,6 +412,61 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
 
                 report_json = json.dumps(report, ensure_ascii=False, indent=2)
                 st.download_button("📥 下载总结报告（JSON）", report_json, "report.json", "application/json", key="report_download")
+
+                # ============================================================
+                # 自由对话功能（限制 3 轮）
+                # ============================================================
+                st.markdown("---")
+                st.subheader("🤖 自由对话（基于文章内容）")
+                st.caption("⚠️ 限制：最多 3 轮对话")
+
+                # 初始化对话状态
+                if "chat_history" not in st.session_state:
+                    st.session_state["chat_history"] = []
+                if "chat_round" not in st.session_state:
+                    st.session_state["chat_round"] = 0
+
+                # 显示对话历史
+                if st.session_state["chat_history"]:
+                    st.markdown("**对话历史**")
+                    for i, (user_msg, ai_msg) in enumerate(st.session_state["chat_history"]):
+                        st.markdown(f"**🧑 用户**：{user_msg}")
+                        st.markdown(f"**🤖 AI**：{ai_msg}")
+                        if i < len(st.session_state["chat_history"]) - 1:
+                            st.markdown("---")
+
+                # 检查是否达到轮次上限
+                if st.session_state["chat_round"] >= 3:
+                    st.warning("已达到对话轮次上限（3 轮）。刷新页面可重新开始。")
+                else:
+                    # 用户输入
+                    user_input = st.text_input(
+                        f"第 {st.session_state['chat_round'] + 1} 轮对话",
+                        placeholder="请输入您的问题（基于文章内容）...",
+                        key="chat_input"
+                    )
+
+                    if st.button("发送", key="chat_send") and user_input:
+                        if not use_glm and not os.getenv("GLM_API_KEY"):
+                            st.error("⚠️ 请先在侧边栏配置 GLM API Key 以使用对话功能。")
+                        else:
+                            with st.spinner("AI 正在思考..."):
+                                from summarizer import chat_with_article
+                                ai_reply, updated_history = chat_with_article(
+                                    text,
+                                    st.session_state["chat_history"],
+                                    user_input
+                                )
+                                st.session_state["chat_history"] = updated_history
+                                st.session_state["chat_round"] = len(updated_history)
+                                st.rerun()
+
+                # 清除对话按钮
+                if st.session_state["chat_history"]:
+                    if st.button("🗑️ 清除对话", key="chat_clear"):
+                        st.session_state["chat_history"] = []
+                        st.session_state["chat_round"] = 0
+                        st.rerun()
     except Exception as e:
         st.error(f"识别失败：{e}")
 
