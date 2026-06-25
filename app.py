@@ -309,7 +309,7 @@ text = ""
 file_name = ""
 
 if input_mode == "粘贴文本":
-    text = st.text_area("请输入需要识别的文本", height=300, placeholder="粘贴河北金融学院公众号文章正文...", key="text_input")
+    text = st.text_area("请输入需要识别的文本", height=300, placeholder="粘贴中文文章正文...", key="text_input")
 
 elif input_mode == "上传图片（OCR）":
     img_file = st.file_uploader("上传文章截图（PNG / JPG）", type=["png", "jpg", "jpeg"], key="img_upload")
@@ -329,7 +329,7 @@ elif input_mode == "上传图片（OCR）":
 
 
 elif input_mode == "URL 抓取":
-    url = st.text_input("微信公众号文章 URL", placeholder="https://mp.weixin.qq.com/s/...", key="url_input")
+    url = st.text_input("文章 URL", placeholder="请输入文章网址...", key="url_input")
     
     # 初始化 session_state 用于缓存 URL 抓取结果
     if "fetched_url" not in st.session_state:
@@ -640,7 +640,7 @@ if st.session_state["recognition_done"] and st.session_state["recognized_text"]:
                 with st.form(key="chat_form", clear_on_submit=True):
                     user_input = st.text_input(
                         f"第 {st.session_state['chat_round'] + 1} 轮对话",
-                        placeholder="请输入您的问题（基于文章内容）...",
+                        placeholder="请输入您的问题...",
                         key="chat_input"
                     )
                     submit_button = st.form_submit_button(label="发送")
