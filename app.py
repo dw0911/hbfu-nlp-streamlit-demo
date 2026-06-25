@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# 这是一个临时修复文件，用于将对话功能独立成标签页
+# 请将此文件重命名为 app.py 以使用
+
 import json
 from html import escape as _html_escape
 import io
@@ -12,7 +15,7 @@ from ner import extract_entities, load_ner, LABEL_MAP, TYPE_COLORS
 import ocr as _ocr
 from extractor import fetch_url_text, parse_html, fetch_url_images
 
-from summarizer import generate_report, classify_topic
+from summarizer import generate_report, classify_topic, chat_with_article
 from visualizer import wordcloud_to_base64, build_pyvis_html, build_cooccurrence_matrix, build_mpl_network
 
 st.set_page_config(
@@ -74,7 +77,7 @@ st.markdown(
     '<div class="sub-header">基于 NLP 的微信公众号文章实体识别、可视化与总结系统</div>',
     unsafe_allow_html=True,
 )
-st.markdown('<div class="author-badge">👨‍💻 开发作者：河北金融学院 应统 王平</div>', unsafe_allow_html=True)
+st.markdown('<div class="author-badge">👨💻 开发作者：河北金融学院 应统 王平</div>', unsafe_allow_html=True)
 
 
 @st.cache_resource(show_spinner="加载 OCR 引擎...")
@@ -134,7 +137,6 @@ with st.sidebar:
         glm_key = os.getenv("GLM_API_KEY", "")
         if not glm_key:
             try:
-                import streamlit as st
                 glm_key = st.secrets.get("GLM_API_KEY", "")
             except Exception:
                 pass
@@ -145,32 +147,13 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**ℹ️ 说明**")
     st.markdown("- **NER 引擎**：GLM 大模型（在线）或 jieba 离线规则。")
-    st.markdown("- **大模型摘要**：在下方填入智谱 GLM API Key 启用（选填）。")
+    st.markdown("- **大模型已自动配置**：无需手动填写 API Key。")
     st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入。")
-    st.markdown("- 识别结果分为：实体识别、可视化、文章总结三个标签页。")
-
-    st.markdown("---")
-    st.markdown("**🤖 大模型总结（智谱 GLM-5.2）**")
-    # 后端自动读取 API Key（从 Secrets 或环境变量）
-    import os
-    glm_api_key = os.getenv("GLM_API_KEY", "")
-    if not glm_api_key:
-        try:
-            glm_api_key = st.secrets.get("GLM_API_KEY", "")
-        except Exception:
-            pass
-    
-    use_glm = bool(glm_api_key.strip())
-    if use_glm:
-        st.success("✅ 已配置 GLM API Key，将使用大模型生成摘要。")
-    else:
-        st.info("未配置 API Key，使用离线抽取式摘要。")
-        st.caption("💡 请在 Streamlit Cloud Secrets 或环境变量中配置 GLM_API_KEY")
+    st.markdown("- 识别结果分为：实体识别、可视化、文章总结、自由对话四个标签页。")
 
     if st.button("🗑️ 清除缓存"):
         st.cache_resource.clear()
         st.success("已清除，下次运行会重新加载。")
-
 
 
 # ============================================================
@@ -265,6 +248,7 @@ if input_mode != "批量文件处理" and "batch_texts" in st.session_state:
     del st.session_state["batch_texts"]
 
 
+
 # ============================================================
 # 初始化 session_state
 # ============================================================
@@ -278,12 +262,14 @@ if "recognized_report" not in st.session_state:
     st.session_state["recognized_report"] = None
 
 
+
 # ============================================================
 # 识别按钮与结果处理
 # ============================================================
 if st.button("🚀 开始识别", type="primary", disabled=not (text and text.strip())):
     try:
         with st.spinner(f"正在使用 {ner_backend.upper()} 引擎识别实体，请稍候..."):
+            use_glm = True  # 大模型已自动配置
             entities = extract_entities(text, backend=ner_backend)
             
             # 保存到 session_state
@@ -310,218 +296,206 @@ if st.session_state["recognition_done"] and st.session_state["recognized_text"]:
         engine_name = "智谱 GLM-5.2" if ner_backend == "glm" else "jieba 离线规则"
         st.success(f"识别到 {len(entities)} 个实体 · 当前引擎：{engine_name}")
 
-        if not entities:
-            st.info("未识别到实体，请检查输入内容或更换文章。")
-        else:
-            engine_name = "智谱 GLM-5.2" if ner_backend == "glm" else "jieba 离线规则"
-            st.success(f"识别到 {len(entities)} 个实体 · 当前引擎：{engine_name}")
+        df = pd.DataFrame(entities)
+        df["类型"] = df["entity"].map(LABEL_MAP).fillna(df["entity"])
+        df = df.rename(columns={"word": "实体", "score": "置信度"})
+        df = df[["类型", "实体", "置信度"]]
 
-            df = pd.DataFrame(entities)
-            df["类型"] = df["entity"].map(LABEL_MAP).fillna(df["entity"])
-            df = df.rename(columns={"word": "实体", "score": "置信度"})
-            df = df[["类型", "实体", "置信度"]]
+        # 统计指标
+        col_metric1, col_metric2, col_metric3, col_metric4 = st.columns(4)
+        with col_metric1:
+            st.metric("实体总数", len(entities))
+        with col_metric2:
+            st.metric("实体类型数", df["类型"].nunique())
+        with col_metric3:
+            top_type = df["类型"].value_counts().idxmax() if not df.empty else "-"
+            st.metric("最多类型", top_type)
+        with col_metric4:
+            top_entity = df["实体"].value_counts().idxmax() if not df.empty else "-"
+            st.metric("最高频实体", top_entity)
 
-            # 统计指标
-            col_metric1, col_metric2, col_metric3, col_metric4 = st.columns(4)
-            with col_metric1:
-                st.metric("实体总数", len(entities))
-            with col_metric2:
-                st.metric("实体类型数", df["类型"].nunique())
-            with col_metric3:
-                top_type = df["类型"].value_counts().idxmax() if not df.empty else "-"
-                st.metric("最多类型", top_type)
-            with col_metric4:
-                top_entity = df["实体"].value_counts().idxmax() if not df.empty else "-"
-                st.metric("最高频实体", top_entity)
+        tab_rec, tab_viz, tab_summary, tab_chat = st.tabs(["📝 实体识别", "📊 可视化分析", "📋 文章总结", "🤖 自由对话"])
 
-            tab_rec, tab_viz, tab_summary = st.tabs(["📝 实体识别", "📊 可视化分析", "📋 文章总结"])
+        # ============================================================
+        # 识别区
+        # ============================================================
+        with tab_rec:
+            col_left, col_right = st.columns([3, 2])
+            with col_left:
+                st.subheader("原文高亮")
+                highlighted = highlight_html(text, entities)
+                st.markdown(
+                    f'<div class="highlight-box">{highlighted}</div>',
+                    unsafe_allow_html=True,
+                )
 
-            # ============================================================
-            # 识别区
-            # ============================================================
-            with tab_rec:
-                col_left, col_right = st.columns([3, 2])
-                with col_left:
-                    st.subheader("原文高亮")
-                    highlighted = highlight_html(text, entities)
+            with col_right:
+                st.subheader("实体列表")
+                types = sorted(df["类型"].unique())
+                selected = st.multiselect("按类型筛选", types, default=types, key="entity_filter_multiselect")
+                filtered = df[df["类型"].isin(selected)]
+                st.dataframe(filtered, use_container_width=True, height=420)
+
+                csv = filtered.to_csv(index=False).encode("utf-8-sig")
+                col_dl1, col_dl2 = st.columns(2)
+                with col_dl1:
+                    st.download_button("📥 CSV", csv, "entities.csv", "text/csv")
+                with col_dl2:
+                    json_str = json.dumps(entities, ensure_ascii=False, indent=2)
+                    st.download_button("📥 JSON", json_str, "entities.json", "application/json")
+
+        # ============================================================
+        # 可视化区
+        # ============================================================
+        with tab_viz:
+            viz_col1, viz_col2 = st.columns([2, 3])
+            with viz_col1:
+                st.subheader("实体类型分布")
+                type_counts = df["类型"].value_counts()
+                st.bar_chart(type_counts, use_container_width=True)
+
+                st.subheader("高频实体 Top 10")
+                top_entities = df["实体"].value_counts().head(10).reset_index()
+                top_entities.columns = ["实体", "出现次数"]
+                st.bar_chart(top_entities.set_index("实体"), use_container_width=True)
+
+            with viz_col2:
+                st.subheader("☁️ 词云图")
+                wc_b64 = wordcloud_to_base64(text, max_words=100)
+                if wc_b64:
                     st.markdown(
-                        f'<div class="highlight-box">{highlighted}</div>',
+                        f'<div style="text-align:center; background:#fff; border-radius:8px; padding:10px; border:1px solid #e0e0e0;">'
+                        f'<img src="data:image/png;base64,{wc_b64}" style="max-width:100%;" />'
+                        f'</div>',
                         unsafe_allow_html=True,
                     )
+                else:
+                    st.info("文本过短，无法生成词云图。")
 
-                with col_right:
-                    st.subheader("实体列表")
-                    types = sorted(df["类型"].unique())
-                    selected = st.multiselect("按类型筛选", types, default=types, key="entity_filter_multiselect")
-                    filtered = df[df["类型"].isin(selected)]
-                    st.dataframe(filtered, use_container_width=True, height=420)
-
-                    csv = filtered.to_csv(index=False).encode("utf-8-sig")
-                    col_dl1, col_dl2 = st.columns(2)
-                    with col_dl1:
-                        st.download_button("📥 CSV", csv, "entities.csv", "text/csv")
-                    with col_dl2:
-                        json_str = json.dumps(entities, ensure_ascii=False, indent=2)
-                        st.download_button("📥 JSON", json_str, "entities.json", "application/json")
-
-            # ============================================================
-            # 可视化区
-            # ============================================================
-            with tab_viz:
-                viz_col1, viz_col2 = st.columns([2, 3])
-                with viz_col1:
-                    st.subheader("实体类型分布")
-                    type_counts = df["类型"].value_counts()
-                    st.bar_chart(type_counts, use_container_width=True)
-
-                    st.subheader("高频实体 Top 10")
-                    top_entities = df["实体"].value_counts().head(10).reset_index()
-                    top_entities.columns = ["实体", "出现次数"]
-                    st.bar_chart(top_entities.set_index("实体"), use_container_width=True)
-
-                with viz_col2:
-                    st.subheader("☁️ 词云图")
-                    wc_b64 = wordcloud_to_base64(text, max_words=100)
-                    if wc_b64:
-                        st.markdown(
-                            f'<div style="text-align:center; background:#fff; border-radius:8px; padding:10px; border:1px solid #e0e0e0;">'
-                            f'<img src="data:image/png;base64,{wc_b64}" style="max-width:100%;" />'
-                            f'</div>',
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.info("文本过短，无法生成词云图。")
-
-                    st.subheader("🕸️ 实体共现网络")
-                    cooccur_df = build_cooccurrence_matrix(entities)
-                    if cooccur_df is not None and not cooccur_df.empty:
-                        # 优先尝试交互式 pyvis，失败或不可用时回退到静态网络图
-                        try:
-                            pyvis_html = build_pyvis_html(entities, height=520)
-                            if pyvis_html:
-                                st.components.v1.html(pyvis_html, height=540)
-                            else:
-                                st.info("交互式网络不可用，已切换为静态网络图。")
-                                net_img = build_mpl_network(entities, figsize=(10, 6))
-                                if net_img:
-                                    st.image(net_img, use_container_width=True)
-                        except Exception as e:
-                            st.warning(f"交互式网络加载失败，已切换为静态网络图：{e}")
+                st.subheader("🕸️ 实体共现网络")
+                cooccur_df = build_cooccurrence_matrix(entities)
+                if cooccur_df is not None and not cooccur_df.empty:
+                    # 优先尝试交互式 pyvis，失败或不可用时回退到静态网络图
+                    try:
+                        pyvis_html = build_pyvis_html(entities, height=520)
+                        if pyvis_html:
+                            st.components.v1.html(pyvis_html, height=540)
+                        else:
+                            st.info("交互式网络不可用，已切换为静态网络图。")
                             net_img = build_mpl_network(entities, figsize=(10, 6))
                             if net_img:
                                 st.image(net_img, use_container_width=True)
+                    except Exception as e:
+                        st.warning(f"交互式网络加载失败，已切换为静态网络图：{e}")
+                        net_img = build_mpl_network(entities, figsize=(10, 6))
+                        if net_img:
+                            st.image(net_img, use_container_width=True)
 
-                        st.markdown("**共现矩阵 Top 20**")
-                        st.dataframe(cooccur_df.head(20), use_container_width=True, height=260)
-                    else:
-                        st.info("实体数量不足或类型单一，无法构建共现网络。")
-
-            # ============================================================
-            # 总结区
-            # ============================================================
-            with tab_summary:
-                report = generate_report(text, entities, use_glm=use_glm)
-
-                col_s1, col_s2 = st.columns([3, 2])
-                with col_s1:
-                    st.subheader("📝 文章摘要")
-                    st.info(report["summary"] if report["summary"] else "文本过短，无法生成摘要。")
-
-                    st.subheader("🔑 关键词")
-                    keywords = report.get("keywords", [])
-                    if keywords:
-                        tags = " ".join([f"<span style='display:inline-block;background:#eaf2f8;color:#1a5276;padding:4px 10px;border-radius:12px;margin:3px;font-size:0.9rem;'>{k}</span>" for k, _ in keywords[:15]])
-                        st.markdown(tags, unsafe_allow_html=True)
-                    else:
-                        st.markdown("未提取到关键词。")
-
-                with col_s2:
-                    st.subheader("📌 文章主题")
-                    st.metric("主题分类", report["topic"])
-
-                    st.subheader("🔍 关键信息")
-                    info = report["key_info"]
-                    for label, key in [("🏢 涉及机构", "orgs"), ("👤 人物", "persons"), ("📍 地点", "locations"),
-                                       ("🎉 活动/事件", "events"), ("📚 专业/课程", "majors"), ("⏰ 时间", "times")]:
-                        vals = info.get(key, [])
-                        display_vals = "、".join(vals[:8]) if vals else "暂无"
-                        st.markdown(f"**{label}**：{display_vals}")
-
-                report_json = json.dumps(report, ensure_ascii=False, indent=2)
-                st.download_button("📥 下载总结报告（JSON）", report_json, "report.json", "application/json", key="report_download")
-
-                # ============================================================
-                # 自由对话功能（限制 3 轮）
-                # ============================================================
-                st.markdown("---")
-                st.subheader("🤖 自由对话（基于文章内容）")
-                st.caption("⚠️ 限制：最多 3 轮对话")
-
-                # 初始化对话状态
-                if "chat_history" not in st.session_state:
-                    st.session_state["chat_history"] = []
-                if "chat_round" not in st.session_state:
-                    st.session_state["chat_round"] = 0
-                if "chat_article_hash" not in st.session_state:
-                    st.session_state["chat_article_hash"] = None
-
-                # 识别完成后，自动初始化对话（将文章摘要作为首轮对话）
-                # 使用文章内容的 hash 来追踪是否换了文章
-                import hashlib
-                current_hash = hashlib.md5(text.encode()).hexdigest()[:16]
-                
-                if st.session_state["chat_article_hash"] != current_hash:
-                    # 新文章，重新初始化对话
-                    if report.get("summary"):
-                        summary_intro = f"我已阅读这篇文章，以下是摘要：\n\n{report['summary']}\n\n您可以基于这篇文章提问，我会尽力回答。"
-                        st.session_state["chat_history"] = [["请介绍这篇文章的主要内容", summary_intro]]
-                        st.session_state["chat_round"] = 1
-                        st.session_state["chat_article_hash"] = current_hash
-
-                # 显示对话历史
-                if st.session_state["chat_history"]:
-                    st.markdown("**对话历史**")
-                    for i, (user_msg, ai_msg) in enumerate(st.session_state["chat_history"]):
-                        st.markdown(f"**🧑 用户**：{user_msg}")
-                        st.markdown(f"**🤖 AI**：{ai_msg}")
-                        if i < len(st.session_state["chat_history"]) - 1:
-                            st.markdown("---")
-
-                # 检查是否达到轮次上限
-                if st.session_state["chat_round"] >= 3:
-                    st.warning("已达到对话轮次上限（3 轮）。点击清除对话可重新开始。")
+                    st.markdown("**共现矩阵 Top 20**")
+                    st.dataframe(cooccur_df.head(20), use_container_width=True, height=260)
                 else:
-                    # 用户输入（使用 form 避免页面刷新）
-                    with st.form(key="chat_form", clear_on_submit=True):
-                        user_input = st.text_input(
-                            f"第 {st.session_state['chat_round'] + 1} 轮对话",
-                            placeholder="请输入您的问题（基于文章内容）...",
-                            key="chat_input"
-                        )
-                        submit_button = st.form_submit_button(label="发送")
+                    st.info("实体数量不足或类型单一，无法构建共现网络。")
 
-                        if submit_button and user_input:
-                            if not use_glm and not os.getenv("GLM_API_KEY"):
-                                st.error("⚠️ 请先在侧边栏配置 GLM API Key 以使用对话功能。")
-                            else:
-                                with st.spinner("AI 正在思考..."):
-                                    from summarizer import chat_with_article
-                                    ai_reply, updated_history = chat_with_article(
-                                        text,
-                                        st.session_state["chat_history"],
-                                        user_input
-                                    )
-                                    st.session_state["chat_history"] = updated_history
-                                    st.session_state["chat_round"] = len(updated_history)
-                                    st.rerun()
+        # ============================================================
+        # 总结区
+        # ============================================================
+        with tab_summary:
+            col_s1, col_s2 = st.columns([3, 2])
+            with col_s1:
+                st.subheader("📝 文章摘要")
+                st.info(report["summary"] if report["summary"] else "文本过短，无法生成摘要。")
 
-                # 清除对话按钮
-                if st.session_state["chat_history"]:
-                    if st.button("🗑️ 清除对话", key="chat_clear"):
-                        st.session_state["chat_history"] = []
-                        st.session_state["chat_round"] = 0
-                        st.session_state["chat_initialized"] = False
-                        st.rerun()
+                st.subheader("🔑 关键词")
+                keywords = report.get("keywords", [])
+                if keywords:
+                    tags = " ".join([f"<span style='display:inline-block;background:#eaf2f8;color:#1a5276;padding:4px 10px;border-radius:12px;margin:3px;font-size:0.9rem;'>{k}</span>" for k, _ in keywords[:15]])
+                    st.markdown(tags, unsafe_allow_html=True)
+                else:
+                    st.markdown("未提取到关键词。")
+
+            with col_s2:
+                st.subheader("📌 文章主题")
+                st.metric("主题分类", report["topic"])
+
+                st.subheader("🔍 关键信息")
+                info = report["key_info"]
+                for label, key in [("🏢 涉及机构", "orgs"), ("👤 人物", "persons"), ("📍 地点", "locations"),
+                                   ("🎉 活动/事件", "events"), ("📚 专业/课程", "majors"), ("⏰ 时间", "times")]:
+                    vals = info.get(key, [])
+                    display_vals = "、".join(vals[:8]) if vals else "暂无"
+                    st.markdown(f"**{label}**：{display_vals}")
+
+            report_json = json.dumps(report, ensure_ascii=False, indent=2)
+            st.download_button("📥 下载总结报告（JSON）", report_json, "report.json", "application/json", key="report_download")
+
+        # ============================================================
+        # 自由对话区（独立标签页）
+        # ============================================================
+        with tab_chat:
+            st.subheader("🤖 自由对话（基于文章内容）")
+            st.caption("⚠️ 限制：最多 3 轮对话")
+
+            # 初始化对话状态
+            if "chat_history" not in st.session_state:
+                st.session_state["chat_history"] = []
+            if "chat_round" not in st.session_state:
+                st.session_state["chat_round"] = 0
+            if "chat_article_hash" not in st.session_state:
+                st.session_state["chat_article_hash"] = None
+
+            # 识别完成后，自动初始化对话（将文章摘要作为首轮对话）
+            # 使用文章内容的 hash 来追踪是否换了文章
+            import hashlib
+            current_hash = hashlib.md5(text.encode()).hexdigest()[:16]
+            
+            if st.session_state["chat_article_hash"] != current_hash:
+                # 新文章，重新初始化对话
+                if report.get("summary"):
+                    summary_intro = f"我已阅读这篇文章，以下是摘要：\n\n{report['summary']}\n\n您可以基于这篇文章提问，我会尽力回答。"
+                    st.session_state["chat_history"] = [["请介绍这篇文章的主要内容", summary_intro]]
+                    st.session_state["chat_round"] = 1
+                    st.session_state["chat_article_hash"] = current_hash
+
+            # 显示对话历史
+            if st.session_state["chat_history"]:
+                st.markdown("**对话历史**")
+                for i, (user_msg, ai_msg) in enumerate(st.session_state["chat_history"]):
+                    st.markdown(f"**🧑 用户**：{user_msg}")
+                    st.markdown(f"**🤖 AI**：{ai_msg}")
+                    if i < len(st.session_state["chat_history"]) - 1:
+                        st.markdown("---")
+
+            # 检查是否达到轮次上限
+            if st.session_state["chat_round"] >= 3:
+                st.warning("已达到对话轮次上限（3 轮）。点击清除对话可重新开始。")
+            else:
+                # 用户输入（使用 form 避免页面刷新）
+                with st.form(key="chat_form", clear_on_submit=True):
+                    user_input = st.text_input(
+                        f"第 {st.session_state['chat_round'] + 1} 轮对话",
+                        placeholder="请输入您的问题（基于文章内容）...",
+                        key="chat_input"
+                    )
+                    submit_button = st.form_submit_button(label="发送")
+
+                    if submit_button and user_input:
+                        with st.spinner("AI 正在思考..."):
+                            ai_reply, updated_history = chat_with_article(
+                                text,
+                                st.session_state["chat_history"],
+                                user_input
+                            )
+                            st.session_state["chat_history"] = updated_history
+                            st.session_state["chat_round"] = len(updated_history)
+                            st.rerun()
+
+            # 清除对话按钮
+            if st.session_state["chat_history"]:
+                if st.button("🗑️ 清除对话", key="chat_clear"):
+                    st.session_state["chat_history"] = []
+                    st.session_state["chat_round"] = 0
+                    st.session_state["chat_article_hash"] = None
+                    st.rerun()
 
 
 # ============================================================
@@ -532,6 +506,7 @@ if input_mode == "批量文件处理" and "batch_texts" in st.session_state:
     st.subheader("📦 批量处理导出")
     if st.button("一键处理所有文件并导出汇总", type="secondary", key="batch_export_btn"):
         try:
+            use_glm = True  # 大模型已自动配置
             all_results = []
             progress = st.progress(0)
             for idx, (fname, content) in enumerate(st.session_state["batch_texts"].items()):
@@ -555,4 +530,3 @@ if input_mode == "批量文件处理" and "batch_texts" in st.session_state:
             st.download_button("📥 下载批量汇总 CSV", csv, "batch_summary.csv", "text/csv", key="batch_csv_download")
         except Exception as e:
             st.error(f"批量导出失败：{e}")
-

@@ -7,17 +7,26 @@ from collections import Counter
 
 # ============================================================
 # 智谱 GLM API 配置
-# 支持两种方式：
-#   1. 环境变量 GLM_API_KEY
-#   2. Streamlit Cloud Secrets 中的 GLM_API_KEY
+# 支持三种方式（优先级从高到低）：
+#   1. 代码中直接配置（下面的 GLM_API_KEY 变量）
+#   2. 环境变量 GLM_API_KEY
+#   3. Streamlit Cloud Secrets 中的 GLM_API_KEY
 # ============================================================
 _ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4/"
+_GLM_API_KEY = "02374cf332e343248cebf0bbc430d779.HUQSMSpMC1svAof1"  # 直接配置 API Key
+
 
 def _get_glm_api_key():
     """惰性读取 GLM API Key（支持运行时设置）。"""
+    # 优先使用代码中配置的 Key
+    if _GLM_API_KEY:
+        return _GLM_API_KEY
+    
+    # 尝试从环境变量读取
     key = os.getenv("GLM_API_KEY", "")
     if key:
         return key
+    
     # 尝试从 streamlit secrets 读取
     try:
         import streamlit as st
