@@ -36,11 +36,12 @@ st.markdown(
         padding-top: 2rem;
         padding-bottom: 2rem;
         max-width: 1200px;
+        font-size: 16px;
     }
     
     /* 主标题 */
     .main-header {
-        font-size: 2.8rem;
+        font-size: 3.2rem;
         font-weight: 800;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
@@ -52,7 +53,7 @@ st.markdown(
     
     /* 副标题 */
     .sub-header {
-        font-size: 1.1rem;
+        font-size: 1.25rem;
         color: #64748b;
         margin-bottom: 2rem;
         font-weight: 400;
@@ -65,7 +66,7 @@ st.markdown(
         color: white;
         padding: 8px 18px;
         border-radius: 25px;
-        font-size: 0.85rem;
+        font-size: 0.95rem;
         font-weight: 500;
         margin-bottom: 1.5rem;
         box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
@@ -95,7 +96,7 @@ st.markdown(
         padding: 20px;
         line-height: 2;
         background: #fefefe;
-        font-size: 1.05rem;
+        font-size: 1.15rem;
         box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
     }
     
@@ -127,6 +128,7 @@ st.markdown(
         border: none;
         padding: 10px 20px;
         font-weight: 500;
+        font-size: 1rem;
     }
     .stTabs [data-baseweb="tab"]:hover {
         background: #f1f5f9;
@@ -141,6 +143,12 @@ st.markdown(
     .stDataFrame {
         border: 2px solid #e2e8f0;
         border-radius: 8px;
+        font-size: 0.95rem;
+    }
+    
+    /* 侧边栏字号 */
+    [data-testid="stSidebar"] .block-container {
+        font-size: 15px;
     }
     
     /* 分割线 */
