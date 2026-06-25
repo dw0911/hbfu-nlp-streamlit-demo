@@ -221,16 +221,26 @@ def highlight_html(text, entities):
             parts.append(_html_escape(text[pos:s]))
         color = TYPE_COLORS.get(typ, "#dddddd")
         label = LABEL_MAP.get(typ, typ)
-        # 更专业的高亮样式
+        # 根据背景色亮度自动选择文字颜色（深色背景用白字，浅色背景用黑字）
+        # 简单启发：颜色 hex 转 RGB，计算相对亮度
+        hex_color = color.lstrip("#")
+        if len(hex_color) == 6:
+            r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+        else:
+            r, g, b = 128, 128, 128
+        brightness = (r * 299 + g * 587 + b * 114) / 1000
+        text_color = "#ffffff" if brightness < 128 else "#000000"
+        # 高对比度的高亮样式
         parts.append(
-            f'<span style="background: linear-gradient(135deg, {color} 0%, {color}cc 100%); '
-            f'padding: 3px 8px; '
-            f'border-radius: 6px; '
-            f'margin: 0 3px; '
-            f'font-weight: 600; '
-            f'box-shadow: 0 2px 4px rgba(0,0,0,0.15); '
-            f'border: 1px solid {color}99; '
-            f'title="{label}";">'
+            f'<span style="background-color: {color}; '
+            f'color: {text_color}; '
+            f'padding: 2px 7px; '
+            f'border-radius: 5px; '
+            f'margin: 0 2px; '
+            f'font-weight: 700; '
+            f'box-shadow: 0 1px 3px rgba(0,0,0,0.18); '
+            f'border: 1.5px solid rgba(0,0,0,0.15); '
+            f'title="{label}（{text[s:e]}）";">'
             f'{_html_escape(text[s:e])}</span>'
         )
         pos = e

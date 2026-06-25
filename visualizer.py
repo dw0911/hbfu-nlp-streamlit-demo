@@ -63,7 +63,7 @@ def _generate_wordcloud_image(text, max_words=100, width=800, height=400):
         height=height,
         max_words=max_words,
         background_color="white",
-        colormap="Spectral",
+        colormap="tab20",
         contour_width=1,
         contour_color="steelblue",
     ).generate(cleaned)
@@ -163,11 +163,11 @@ def build_pyvis_html(entities, window_size=50, height=600, max_nodes=80):
         net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=120, spring_strength=0.05)
 
         type_color = {
-            "PERSON": "#ffadad",
-            "ORG": "#caffbf",
-            "LOC": "#9bf6ff",
-            "EVENT": "#ffc6ff",
-            "MAJOR": "#fdffb6",
+            "PERSON": "#e63946",   # 深红
+            "ORG":   "#1d3557",    # 深蓝
+            "LOC":   "#2a9d8f",    # 翠绿
+            "EVENT": "#e9c46a",    # 金黄
+            "MAJOR": "#9b5de5",    # 亮紫
         }
 
         for node in nodes:
@@ -229,11 +229,11 @@ def build_mpl_network(entities, figsize=(10, 8)):
     G = nx.Graph()
     node_labels = {}
     type_color = {
-        "PERSON": "#ffadad",
-        "ORG": "#caffbf",
-        "LOC": "#9bf6ff",
-        "EVENT": "#ffc6ff",
-        "MAJOR": "#fdffb6",
+        "PERSON": "#e63946",   # 深红
+        "ORG":   "#1d3557",    # 深蓝
+        "LOC":   "#2a9d8f",    # 翠绿
+        "EVENT": "#e9c46a",    # 金黄
+        "MAJOR": "#9b5de5",    # 亮紫
     }
     node_colors = []
     for node in nodes:
