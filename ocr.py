@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*-
 from PIL import Image
 import numpy as np
+import os
+import traceback
+
+# 设置模型缓存目录，避免每次下载
+os.environ.setdefault('RAPIDOCR_HOME', os.path.expanduser('~/.rapidocr'))
 
 try:
     from rapidocr import RapidOCR
@@ -8,7 +14,7 @@ try:
 except Exception as e:
     RapidOCR = None
     _RAPIDOCR_AVAILABLE = False
-    _RAPIDOCR_ERROR = str(e)
+    _RAPIDOCR_ERROR = f"RapidOCR 导入失败: {e}"
 
 
 def load_ocr():
@@ -17,10 +23,23 @@ def load_ocr():
     if not _RAPIDOCR_AVAILABLE:
         return None
     try:
-        return RapidOCR()
+        # RapidOCR 3.x 初始化，设置较小的检测阈值以加快速度
+        engine = RapidOCR(
+            text_score=0.5,
+            box_thresh=0.5,
+        )
+        return engine
+    except TypeError:
+        # 如果参数不支持，回退到无参数初始化
+        try:
+            return RapidOCR()
+        except Exception as e:
+            _RAPIDOCR_AVAILABLE = False
+            _RAPIDOCR_ERROR = f"RapidOCR 初始化失败: {e}"
+            return None
     except Exception as e:
         _RAPIDOCR_AVAILABLE = False
-        _RAPIDOCR_ERROR = str(e)
+        _RAPIDOCR_ERROR = f"RapidOCR 初始化失败: {e}\n{traceback.format_exc()}"
         return None
 
 

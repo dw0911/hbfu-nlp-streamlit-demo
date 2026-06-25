@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
-import html
+from html import escape as _html_escape
 import io
 import base64
 import pandas as pd
@@ -93,17 +93,17 @@ def highlight_html(text, entities):
         if s < pos:
             continue
         if s > pos:
-            parts.append(html.escape(text[pos:s]))
+            parts.append(_html_escape(text[pos:s]))
         color = TYPE_COLORS.get(typ, "#dddddd")
         label = LABEL_MAP.get(typ, typ)
         parts.append(
             f'<span style="background-color:{color}; padding:2px 5px; border-radius:4px; '
             f'margin:0 2px; font-weight:500; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="{label}">'
-            f'{html.escape(text[s:e])}</span>'
+            f'{_html_escape(text[s:e])}</span>'
         )
         pos = e
     if pos < len(text):
-        parts.append(html.escape(text[pos:]))
+        parts.append(_html_escape(text[pos:]))
     return "".join(parts)
 
 
