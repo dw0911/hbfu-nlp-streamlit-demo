@@ -9,26 +9,29 @@ import jieba
 
 # ============================================================
 # GLM NER API 配置（与 summarizer.py 共用 API Key）
+# 支持三种配置方式（优先级从高到低）：
+#   1. 环境变量 GLM_API_KEY
+#   2. Streamlit Cloud Secrets 中的 GLM_API_KEY
+#   3. 代码中直接配置（下面的 _GLM_API_KEY 变量，默认空）
 # ============================================================
-_GLM_API_KEY = "02374cf332e343248cebf0bbc430d779.HUQSMSpMC1svAof1"  # 直接配置 API Key
+_GLM_API_KEY = ""  # 默认空，优先从环境变量或 Streamlit secrets 读取
 
 def _get_glm_api_key():
     """惰性读取 GLM API Key（支持运行时设置）。"""
-    # 优先使用代码中配置的 Key
-    if _GLM_API_KEY:
-        return _GLM_API_KEY
-    
-    # 尝试从环境变量读取
+    # 1. 优先从环境变量读取
     key = os.getenv("GLM_API_KEY", "")
     if key:
         return key
-    
-    # 尝试从 streamlit secrets 读取
+
+    # 2. 尝试从 streamlit secrets 读取
     try:
         import streamlit as st
         return st.secrets.get("GLM_API_KEY", "")
     except Exception:
-        return ""
+        pass
+
+    # 3. 最后使用代码中配置的 Key（保留兜底）
+    return _GLM_API_KEY
 
 # ============================================================
 # 领域词典：通用中文实体词典
@@ -72,14 +75,47 @@ COMMON_WORK_TITLES = [
     "院长", "副院长", "校长", "副校长", "所长", "副所长", "科长", "副科长",
 ]
 
+# 常见产品/技术/平台
+COMMON_PRODUCTS = [
+    "iPhone", "iPad", "MacBook", "华为", "小米", "OPPO", "vivo", "三星", "微信", "支付宝",
+    "淘宝", "京东", "抖音", "快手", "B站", "知乎", "微博", "百度", "高德地图", "滴滴",
+    "ChatGPT", "GPT", "DeepSeek", "文心一言", "通义千问", "讯飞星火", "新能源汽车", "电动车",
+    "芯片", "半导体", "5G", "物联网", "云计算", "大数据", "人工智能", "AI", "区块链",
+]
+
+# 常见地理政治实体（国家/省份/城市）
+COMMON_GPE = [
+    "中国", "美国", "日本", "韩国", "英国", "法国", "德国", "俄罗斯", "印度", "澳大利亚",
+    "加拿大", "巴西", "新加坡", "泰国", "越南", "马来西亚",
+    "北京", "上海", "广州", "深圳", "天津", "重庆", "成都", "杭州", "武汉", "西安", "南京",
+    "河北", "河南", "山东", "山西", "陕西", "湖南", "湖北", "江苏", "浙江", "安徽", "福建",
+    "江西", "广东", "广西", "海南", "四川", "贵州", "云南", "辽宁", "吉林", "黑龙江",
+]
+
+# 常见法律法规/政策
+COMMON_LAWS = [
+    "宪法", "民法典", "刑法", "劳动法", "教育法", "公司法", "证券法", "环保法",
+    "双减政策", "双碳目标", "十四五规划", "五年规划", "纲要", "意见", "通知", "规定", "办法",
+]
+
+# 技术术语
+COMMON_TECH = [
+    "机器学习", "深度学习", "神经网络", "自然语言处理", "计算机视觉", "推荐系统",
+    "Transformer", "大模型", "LLM", "算法", "模型", "数据集", "API", "SDK",
+]
+
 ORG_KEYWORDS = [
     "公司", "集团", "银行", "证券", "保险", "基金", "信托", "投资", "学院", "系", "处", "部", "科",
     "办公室", "中心", "所", "协会", "学会", "联盟", "社团", "联合会", "委员会", "学生会", "团委", "工会",
     "企业", "工厂", "报社", "电视台", "电台", "网站", "平台", "工作室", "事务所", "出版社", "杂志社",
 ]
 
+GPE_KEYWORDS = [
+    "国", "省", "市", "区", "县", "镇", "乡", "村", "州", "郡",
+]
+
 LOC_KEYWORDS = [
-    "省", "市", "区", "县", "镇", "乡", "村", "街道", "路", "街", "道", "巷", "号", "大厦", "楼", "广场",
+    "街道", "路", "街", "道", "巷", "号", "大厦", "楼", "广场",
     "公园", "机场", "站", "港", "湾", "河", "湖", "山", "岛", "城", "校区", "校园", "图书馆", "教学楼",
     "实验楼", "体育馆", "公寓", "食堂", "报告厅", "会议室", "礼堂", "操场", "门", "中心",
 ]
@@ -94,31 +130,100 @@ MAJOR_KEYWORDS = ["专业", "系", "学科", "课程"]
 WORK_KEYWORDS = ["书记", "校长", "院长", "系主任", "处长", "科长", "教授", "副教授", "讲师", "辅导员",
                  "班主任", "主任", "主席", "秘书长"]
 
+PRODUCT_KEYWORDS = ["手机", "电脑", "笔记本", "平板", "汽车", "芯片", "软件", "系统", "平台", "应用", "APP",
+                    "模型", "产品", "设备", "仪器", "工具", "方案", "服务"]
+
+TECH_KEYWORDS = ["人工智能", "AI", "大数据", "云计算", "区块链", "物联网", "5G", "算法", "神经网络",
+                 "深度学习", "机器学习", "自然语言处理", "计算机视觉", "大模型", "LLM", "API", "SDK"]
+
+LAW_KEYWORDS = ["法", "条例", "规定", "办法", "细则", "意见", "通知", "纲要", "规划", "政策", "决议", "公约"]
+
 LABEL_MAP = {
     "PERSON": "人名",
     "ORG": "组织机构",
+    "GPE": "国家/地区/城市",
     "LOC": "地点",
     "TIME": "时间",
     "EVENT": "活动/事件",
     "MAJOR": "专业/课程",
     "WORK": "职务/职称",
+    "PRODUCT": "产品/平台",
+    "TECH": "技术术语",
+    "LAW": "法律法规/政策",
     "MONEY": "金额",
     "PERCENT": "百分比",
+    "EMAIL": "邮箱",
+    "PHONE": "电话",
+    "ID": "证件号",
 }
 
 TYPE_COLORS = {
-    "PERSON": "#ef4444",  # 红色 - 更醒目的红色
-    "ORG": "#10b981",     # 绿色 - 更醒目的绿色
-    "LOC": "#3b82f6",     # 蓝色 - 更醒目的蓝色
-    "TIME": "#f59e0b",    # 橙色 - 更醒目的橙色
-    "EVENT": "#8b5cf6",   # 紫色 - 更醒目的紫色
-    "MAJOR": "#06b6d4",   # 青色 - 更醒目的青色
-    "WORK": "#ec4899",    # 粉色 - 更醒目的粉色
-    "MONEY": "#84cc16",   # 黄绿色 - 更醒目的黄绿色
-    "PERCENT": "#6366f1", # 靛蓝色 - 更醒目的靛蓝色
+    "PERSON": "#ef4444",   # 红色
+    "ORG": "#10b981",      # 绿色
+    "GPE": "#f97316",      # 深橙
+    "LOC": "#3b82f6",      # 蓝色
+    "TIME": "#f59e0b",     # 橙色
+    "EVENT": "#8b5cf6",    # 紫色
+    "MAJOR": "#06b6d4",    # 青色
+    "WORK": "#ec4899",     # 粉色
+    "PRODUCT": "#6366f1",  # 靛蓝
+    "TECH": "#14b8a6",     #  teal
+    "LAW": "#a855f7",      # 紫罗兰
+    "MONEY": "#84cc16",    # 黄绿色
+    "PERCENT": "#0ea5e9",  # 天蓝
+    "EMAIL": "#64748b",    # 灰蓝
+    "PHONE": "#64748b",    # 灰蓝
+    "ID": "#94a3b8",       # 浅灰
 }
 
-# 正则模式：时间、金额、百分比
+# ============================================================
+# 为 _domain_classify 预建集合，提升查找速度
+# ============================================================
+_COMMON_ORGS_SET = set(COMMON_ORGS)
+_COMMON_GPE_SET = set(COMMON_GPE)
+_COMMON_LOCATIONS_SET = set(COMMON_LOCATIONS)
+_COMMON_EVENTS_SET = set(COMMON_EVENTS)
+_COMMON_MAJORS_SET = set(COMMON_MAJORS)
+_COMMON_WORK_TITLES_SET = set(COMMON_WORK_TITLES)
+_COMMON_PRODUCTS_SET = set(COMMON_PRODUCTS)
+_COMMON_LAWS_SET = set(COMMON_LAWS)
+_COMMON_TECH_SET = set(COMMON_TECH)
+
+# 后缀集合：用于快速判断词是否以某些关键词结尾
+_ORG_SUFFIXES = set(ORG_KEYWORDS)
+_GPE_SUFFIXES = set(GPE_KEYWORDS)
+_LOC_SUFFIXES = set(LOC_KEYWORDS)
+_EVENT_SUFFIXES = set(EVENT_KEYWORDS)
+_MAJOR_SUFFIXES = set(MAJOR_KEYWORDS)
+_WORK_SUFFIXES = set(WORK_KEYWORDS)
+_PRODUCT_SUFFIXES = set(PRODUCT_KEYWORDS)
+_TECH_SUFFIXES = set(TECH_KEYWORDS)
+_LAW_SUFFIXES = set(LAW_KEYWORDS)
+
+
+def _endswith_any(word, suffix_set):
+    """检查 word 是否以 suffix_set 中任意一个词结尾。
+    通过枚举 word 的后缀来匹配集合，比遍历 suffix_set 更高效。
+    """
+    if not suffix_set:
+        return False
+    for i in range(len(word)):
+        if word[i:] in suffix_set:
+            return True
+    return False
+
+
+def _contains_any(word, candidate_set):
+    """检查 word 是否包含 candidate_set 中任意一个词（作为子串）。"""
+    if not candidate_set:
+        return False
+    for c in candidate_set:
+        if c in word:
+            return True
+    return False
+
+
+# 正则模式：时间、金额、百分比、邮箱、电话、证件号
 _TIME_PATTERNS = [
     (re.compile(r"\d{4}年\d{1,2}月\d{1,2}日(?:\s*\d{1,2}时\d{1,2}分)?"), "TIME"),
     (re.compile(r"\d{4}年\d{1,2}月"), "TIME"),
@@ -140,10 +245,29 @@ _PERCENT_PATTERNS = [
     (re.compile(r"(?:百|千|万|亿)分之\d+(?:\.\d+)?"), "PERCENT"),
 ]
 
+_EMAIL_PATTERNS = [
+    (re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"), "EMAIL"),
+]
+
+_PHONE_PATTERNS = [
+    # 手机号、固话、400/800
+    (re.compile(r"(?:(?:\+?86[-\s]?)?1[3-9]\d{9}|\d{3,4}-\d{7,8}|400\d{7}|800\d{7})"), "PHONE"),
+]
+
+_ID_PATTERNS = [
+    # 身份证号（18位，隐藏具体数字更安全，仅标注格式）
+    (re.compile(r"\d{17}[\dXx]"), "ID"),
+]
+
+_ALL_REGEX_PATTERNS = _TIME_PATTERNS + _MONEY_PATTERNS + _PERCENT_PATTERNS + _EMAIL_PATTERNS + _PHONE_PATTERNS + _ID_PATTERNS
+
 
 def _add_domain_words():
     """把领域词添加到 jieba 用户词典，提高切分与识别准确率。"""
-    for word in set(COMMON_ORGS + COMMON_LOCATIONS + COMMON_EVENTS + COMMON_MAJORS + COMMON_WORK_TITLES):
+    for word in set(
+        COMMON_ORGS + COMMON_LOCATIONS + COMMON_EVENTS + COMMON_MAJORS + COMMON_WORK_TITLES +
+        COMMON_PRODUCTS + COMMON_GPE + COMMON_LAWS + COMMON_TECH
+    ):
         if word and len(word) >= 2:
             jieba.add_word(word, freq=1000)
 
@@ -174,38 +298,59 @@ class NEREngine:
     def _domain_classify(self, word, flag):
         if not word or len(word) < 2:
             return None
-        # 检查通用领域词典
-        if any(org in word for org in COMMON_ORGS):
+        w = word.strip()
+
+        # 1. 通用领域词典：优先完整匹配或包含
+        if w in _COMMON_PRODUCTS_SET or _contains_any(w, _COMMON_PRODUCTS_SET) or _endswith_any(w, _COMMON_PRODUCTS_SET):
+            return "PRODUCT"
+        if w in _COMMON_GPE_SET:
+            return "GPE"
+        if w in _COMMON_LAWS_SET:
+            return "LAW"
+        if w in _COMMON_TECH_SET:
+            return "TECH"
+        if _endswith_any(w, _ORG_SUFFIXES) or w in _COMMON_ORGS_SET:
             return "ORG"
-        if any(loc in word for loc in COMMON_LOCATIONS):
+        if _endswith_any(w, _LOC_SUFFIXES) or w in _COMMON_LOCATIONS_SET:
             return "LOC"
-        if any(event in word for event in COMMON_EVENTS):
+        if w in _COMMON_EVENTS_SET:
             return "EVENT"
-        if any(major in word for major in COMMON_MAJORS):
+        if w in _COMMON_MAJORS_SET:
             return "MAJOR"
-        if any(work in word for work in COMMON_WORK_TITLES):
+        if w in _COMMON_WORK_TITLES_SET:
             return "WORK"
-        
-        # 基于词性标注的分类
+
+        # 2. 基于词性标注的分类
         if flag.startswith("nr") and self._is_chinese_name(word):
             return "PERSON"
         if flag == "ns":
+            # 区分地理政治实体与普通地点
+            if _endswith_any(w, _GPE_SUFFIXES) or w in _COMMON_GPE_SET:
+                return "GPE"
             return "LOC"
         if flag == "nt":
             return "ORG"
-        
-        # 基于关键词后缀的分类
-        if any(word.endswith(s) for s in ORG_KEYWORDS):
+
+        # 3. 基于关键词后缀的分类
+        if _endswith_any(w, _PRODUCT_SUFFIXES):
+            return "PRODUCT"
+        if _endswith_any(w, _TECH_SUFFIXES):
+            return "TECH"
+        if _endswith_any(w, _LAW_SUFFIXES):
+            return "LAW"
+        if _endswith_any(w, _ORG_SUFFIXES):
             return "ORG"
-        if any(word.endswith(s) for s in LOC_KEYWORDS):
+        if _endswith_any(w, _GPE_SUFFIXES):
+            return "GPE"
+        if _endswith_any(w, _LOC_SUFFIXES):
             return "LOC"
-        if any(word.endswith(s) for s in EVENT_KEYWORDS):
+        if _endswith_any(w, _EVENT_SUFFIXES):
             return "EVENT"
-        if any(word.endswith(s) for s in MAJOR_KEYWORDS):
+        if _endswith_any(w, _MAJOR_SUFFIXES):
             return "MAJOR"
-        if any(word.endswith(s) for s in WORK_KEYWORDS):
+        if _endswith_any(w, _WORK_SUFFIXES):
             return "WORK"
-        
+
         return None
 
     def _extract_by_jieba(self, text):
@@ -234,7 +379,7 @@ class NEREngine:
 
     def _extract_by_regex(self, text):
         entities = []
-        for pattern, ent_type in _TIME_PATTERNS + _MONEY_PATTERNS + _PERCENT_PATTERNS:
+        for pattern, ent_type in _ALL_REGEX_PATTERNS:
             for m in pattern.finditer(text):
                 entities.append({
                     "entity": ent_type,
@@ -280,17 +425,6 @@ class NEREngine:
         return entities
 
 
-def load_ner(backend="jieba"):
-    """加载 NER 引擎（统一返回 jieba 引擎）。backend 参数保留以兼容旧调用。"""
-    return NEREngine()
-
-
-def extract_entities(text, nlp=None, max_len=None):
-    """兼容旧接口的实体识别函数。"""
-    engine = load_ner()
-    return engine.extract(text)
-
-
 class GLMNEREngine:
     """
     基于智谱 GLM 的 NER 引擎。
@@ -315,7 +449,7 @@ class GLMNEREngine:
             )
             prompt = (
                 "请从以下中文文本中识别命名实体，并以 JSON 数组格式返回。"
-                "每个实体包含：word（实体文本）、entity（实体类型，可选值：PERSON/ORG/LOC/TIME/EVENT/MAJOR/WORK/MONEY/PERCENT）、start（起始字符位置）、end（结束字符位置）。"
+                "每个实体包含：word（实体文本）、entity（实体类型，可选值：PERSON/ORG/GPE/LOC/TIME/EVENT/MAJOR/WORK/PRODUCT/TECH/LAW/MONEY/PERCENT/EMAIL/PHONE/ID）、start（起始字符位置）、end（结束字符位置）。"
                 "只返回 JSON 数组，不要有其他内容。\n\n文本："
             )
             response = client.chat.completions.create(

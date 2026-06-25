@@ -347,7 +347,7 @@ with st.sidebar:
         <p style='font-weight: 600; margin-bottom: 8px; color: #1e293b;'>ℹ️ 功能说明</p>
         <ul style='margin: 0; padding-left: 20px; color: #64748b; font-size: 0.9rem;'>
             <li>双引擎：GLM 大模型 / jieba 离线</li>
-            <li>自动配置 API Key</li>
+            <li>支持环境变量 / Streamlit Secrets 配置 API Key</li>
             <li>五种输入方式</li>
             <li>四大分析功能</li>
         </ul>
@@ -501,7 +501,7 @@ if "recognized_report" not in st.session_state:
 if st.button("🚀 开始识别", type="primary", disabled=not (text and text.strip())):
     try:
         with st.spinner(f"正在使用 {ner_backend.upper()} 引擎识别实体，请稍候..."):
-            use_glm = True  # 大模型已自动配置
+            use_glm = True  # 尝试调用 GLM 生成摘要；未配置 Key 时自动回退到抽取式
             entities = extract_entities(text, backend=ner_backend)
             
             # 保存到 session_state
@@ -664,8 +664,21 @@ if st.session_state["recognition_done"] and st.session_state["recognized_text"]:
 
                 st.subheader("🔍 关键信息")
                 info = report["key_info"]
-                for label, key in [("🏢 涉及机构", "orgs"), ("👤 人物", "persons"), ("📍 地点", "locations"),
-                                   ("🎉 活动/事件", "events"), ("📚 专业/课程", "majors"), ("⏰ 时间", "times")]:
+                for label, key in [
+                    ("🏢 涉及机构", "orgs"),
+                    ("👤 人物", "persons"),
+                    ("🌍 国家/地区", "gpes"),
+                    ("📍 地点", "locations"),
+                    ("🎉 活动/事件", "events"),
+                    ("📚 专业/课程", "majors"),
+                    ("⏰ 时间", "times"),
+                    ("📦 产品/平台", "products"),
+                    ("🔧 技术术语", "techs"),
+                    ("⚖️ 法律法规", "laws"),
+                    ("💰 金额", "moneys"),
+                    ("📞 联系方式", "phones"),
+                    ("📧 邮箱", "emails"),
+                ]:
                     vals = info.get(key, [])
                     display_vals = "、".join(vals[:8]) if vals else "暂无"
                     st.markdown(f"**{label}**：{display_vals}")
@@ -751,7 +764,7 @@ if input_mode == "批量文件处理" and "batch_texts" in st.session_state:
     st.subheader("📦 批量处理导出")
     if st.button("一键处理所有文件并导出汇总", type="secondary", key="batch_export_btn"):
         try:
-            use_glm = True  # 大模型已自动配置
+            use_glm = True  # 尝试调用 GLM 生成摘要；未配置 Key 时自动回退到抽取式
             all_results = []
             progress = st.progress(0)
             for idx, (fname, content) in enumerate(st.session_state["batch_texts"].items()):

@@ -15,6 +15,32 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 import pandas as pd
+import jieba
+
+
+# 中文停用词表（简化版）
+_STOP_WORDS = {
+    "的", "了", "在", "是", "我", "有", "和", "就", "不", "人", "都", "一", "一个", "上", "也", "很", "到", "说", "要", "去", "你", "会", "着", "没有", "看", "好", "自己", "这", "那", "这些", "那些", "这个", "那个", "之", "与", "及", "等", "或", "但", "而", "因", "于", "则", "以", "被", "把", "给", "让", "向", "从", "对", "关于", "为", "作为", "可以", "进行", "已经", "正在", "开始", "完成", "实现", "提出", "通过", "根据", "随着", "由于", "为了", "以及", "其中", "其", "他", "她", "它", "他们", "她们", "它们", "我们", "你们", "咱们",
+    "今天", "明天", "昨天", "今年", "去年", "明年", "目前", "现在", "当时", "期间", "时间", "时候", "日期", "年度", "月", "日", "年",
+    "公司", "企业", "单位", "部门", "学院", "大学", "学校", "专业", "学生", "老师", "教授", "同志", "先生", "女士",
+    "需要", "表示", "认为", "指出", "介绍", "报道", "记者", "网讯", "本报", "本刊", "网络", "图片", "文章", "报道", "发表", "发布",
+}
+
+
+def _is_meaningful_word(word):
+    """判断一个词是否值得放入词云：长度>=2、非纯数字、非停用词。"""
+    if not word or len(word.strip()) < 2:
+        return False
+    if word in _STOP_WORDS:
+        return False
+    # 过滤纯数字、纯标点、纯英文字母（通常不是中文关键词）
+    if re.fullmatch(r"\d+", word):
+        return False
+    if re.fullmatch(r"[a-zA-Z]+", word):
+        return False
+    if re.fullmatch(r"[^\u4e00-\u9fa5a-zA-Z0-9]+", word):
+        return False
+    return True
 
 
 
@@ -47,15 +73,19 @@ def _find_font():
 
 
 def _generate_wordcloud_image(text, max_words=100, width=800, height=400):
-    """生成词云图，返回 PIL Image 对象。"""
+    """生成词云图：先 jieba 分词，再过滤停用词，最后按词频生成。"""
     if not text or not isinstance(text, str):
         return None
 
-    # 简单清洗：去除标点和数字，只保留中文字符
-    cleaned = re.sub(r"[^\u4e00-\u9fa5]", " ", text)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    if not cleaned:
+    # 1. jieba 分词
+    words = jieba.lcut(text)
+    # 2. 过滤无意义词
+    words = [w.strip() for w in words if _is_meaningful_word(w.strip())]
+    if not words:
         return None
+
+    # 3. 按空格连接成 WordCloud 需要的格式
+    word_text = " ".join(words)
 
     wc = WordCloud(
         font_path=_find_font(),
@@ -66,8 +96,7 @@ def _generate_wordcloud_image(text, max_words=100, width=800, height=400):
         colormap="tab20",
         contour_width=1,
         contour_color="steelblue",
-    ).generate(cleaned)
-
+    ).generate(word_text)
 
     return wc.to_image()
 
@@ -92,8 +121,8 @@ def build_cooccurrence(entities, window_size=50):
     if not entities:
         return [], []
 
-    # 按类型分组，只保留部分类型用于共现网络
-    focus_types = {"PERSON", "ORG", "LOC", "EVENT", "MAJOR"}
+    # 按类型分组，保留核心实体类型用于共现网络
+    focus_types = {"PERSON", "ORG", "GPE", "LOC", "EVENT", "MAJOR", "PRODUCT", "TECH", "LAW"}
     filtered = [e for e in entities if e.get("entity") in focus_types]
     if len(filtered) < 2:
         return [], []
@@ -139,6 +168,20 @@ def build_cooccurrence(entities, window_size=50):
     return nodes, edges
 
 
+# 统一的实体类型颜色映射（用于网络图）
+TYPE_COLOR_MAP = {
+    "PERSON":  "#e63946",  # 深红
+    "ORG":     "#1d3557",  # 深蓝
+    "GPE":     "#f97316",  # 深橙
+    "LOC":     "#2a9d8f",  # 翠绿
+    "EVENT":   "#e9c46a",  # 金黄
+    "MAJOR":   "#9b5de5",  # 亮紫
+    "PRODUCT": "#6366f1",  # 靛蓝
+    "TECH":    "#14b8a6",  # teal
+    "LAW":     "#a855f7",  # 紫罗兰
+}
+
+
 def build_pyvis_html(entities, window_size=50, height=600, max_nodes=80):
     """用 pyvis 生成实体共现网络图 HTML。节点过多时自动截断，避免前端卡死。"""
     try:
@@ -162,21 +205,13 @@ def build_pyvis_html(entities, window_size=50, height=600, max_nodes=80):
         net = Network(height=f"{height}px", width="100%", bgcolor="#ffffff", font_color="#333333", notebook=False)
         net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=120, spring_strength=0.05)
 
-        type_color = {
-            "PERSON": "#e63946",   # 深红
-            "ORG":   "#1d3557",    # 深蓝
-            "LOC":   "#2a9d8f",    # 翠绿
-            "EVENT": "#e9c46a",    # 金黄
-            "MAJOR": "#9b5de5",    # 亮紫
-        }
-
         for node in nodes:
             size = 15 + min(node["count"] * 3, 30)
             net.add_node(
                 node["id"],
                 label=node["label"],
                 title=f"{node['label']} ({node['type']})\n出现次数：{node['count']}",
-                color=type_color.get(node["type"], "#dddddd"),
+                color=TYPE_COLOR_MAP.get(node["type"], "#dddddd"),
                 size=size,
             )
 
@@ -194,7 +229,7 @@ def build_pyvis_html(entities, window_size=50, height=600, max_nodes=80):
 def build_cooccurrence_matrix(entities, focus_types=None):
     """构建实体共现矩阵，返回 DataFrame。"""
     if focus_types is None:
-        focus_types = {"PERSON", "ORG", "LOC", "EVENT", "MAJOR"}
+        focus_types = {"PERSON", "ORG", "GPE", "LOC", "EVENT", "MAJOR", "PRODUCT", "TECH", "LAW"}
     filtered = [e for e in entities if e.get("entity") in focus_types]
     if len(filtered) < 2:
         return None
@@ -228,18 +263,11 @@ def build_mpl_network(entities, figsize=(10, 8)):
 
     G = nx.Graph()
     node_labels = {}
-    type_color = {
-        "PERSON": "#e63946",   # 深红
-        "ORG":   "#1d3557",    # 深蓝
-        "LOC":   "#2a9d8f",    # 翠绿
-        "EVENT": "#e9c46a",    # 金黄
-        "MAJOR": "#9b5de5",    # 亮紫
-    }
     node_colors = []
     for node in nodes:
         G.add_node(node["id"], label=node["label"], count=node["count"])
         node_labels[node["id"]] = node["label"]
-        node_colors.append(type_color.get(node["type"], "#dddddd"))
+        node_colors.append(TYPE_COLOR_MAP.get(node["type"], "#dddddd"))
 
     for edge in edges:
         G.add_edge(edge["source"], edge["target"], weight=edge["weight"])

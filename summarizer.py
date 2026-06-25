@@ -8,31 +8,30 @@ from collections import Counter
 # ============================================================
 # 智谱 GLM API 配置
 # 支持三种方式（优先级从高到低）：
-#   1. 代码中直接配置（下面的 GLM_API_KEY 变量）
-#   2. 环境变量 GLM_API_KEY
-#   3. Streamlit Cloud Secrets 中的 GLM_API_KEY
+#   1. 环境变量 GLM_API_KEY
+#   2. Streamlit Cloud Secrets 中的 GLM_API_KEY
+#   3. 代码中直接配置（下面的 _GLM_API_KEY 变量，默认空）
 # ============================================================
 _ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4/"
-_GLM_API_KEY = "02374cf332e343248cebf0bbc430d779.HUQSMSpMC1svAof1"  # 直接配置 API Key
+_GLM_API_KEY = ""  # 默认空，优先从环境变量或 Streamlit secrets 读取
 
 
 def _get_glm_api_key():
     """惰性读取 GLM API Key（支持运行时设置）。"""
-    # 优先使用代码中配置的 Key
-    if _GLM_API_KEY:
-        return _GLM_API_KEY
-    
-    # 尝试从环境变量读取
+    # 1. 优先从环境变量读取
     key = os.getenv("GLM_API_KEY", "")
     if key:
         return key
-    
-    # 尝试从 streamlit secrets 读取
+
+    # 2. 尝试从 streamlit secrets 读取
     try:
         import streamlit as st
         return st.secrets.get("GLM_API_KEY", "")
     except Exception:
-        return ""
+        pass
+
+    # 3. 最后使用代码中配置的 Key（保留兜底）
+    return _GLM_API_KEY
 
 def _call_glm(prompt, text, model="glm-5.2", max_tokens=512):
     """调用智谱 GLM API 进行大模型总结。"""
@@ -179,7 +178,7 @@ def classify_topic(text):
 
 
 def extract_key_info(text, entities):
-    """从实体中汇总关键信息：涉及机构、人物、地点、活动、专业、时间。"""
+    """从实体中汇总关键信息：涉及机构、人物、地点、活动、专业、时间、产品/技术/法规等。"""
     if not entities:
         entities = []
 
@@ -187,9 +186,18 @@ def extract_key_info(text, entities):
         "orgs": [],
         "persons": [],
         "locations": [],
+        "gpes": [],
         "events": [],
         "majors": [],
         "times": [],
+        "products": [],
+        "techs": [],
+        "laws": [],
+        "moneys": [],
+        "percents": [],
+        "emails": [],
+        "phones": [],
+        "ids": [],
     }
 
     for ent in entities:
@@ -203,12 +211,30 @@ def extract_key_info(text, entities):
             info["persons"].append(word)
         elif typ == "LOC":
             info["locations"].append(word)
+        elif typ == "GPE":
+            info["gpes"].append(word)
         elif typ == "EVENT":
             info["events"].append(word)
         elif typ == "MAJOR":
             info["majors"].append(word)
         elif typ == "TIME":
             info["times"].append(word)
+        elif typ == "PRODUCT":
+            info["products"].append(word)
+        elif typ == "TECH":
+            info["techs"].append(word)
+        elif typ == "LAW":
+            info["laws"].append(word)
+        elif typ == "MONEY":
+            info["moneys"].append(word)
+        elif typ == "PERCENT":
+            info["percents"].append(word)
+        elif typ == "EMAIL":
+            info["emails"].append(word)
+        elif typ == "PHONE":
+            info["phones"].append(word)
+        elif typ == "ID":
+            info["ids"].append(word)
 
     # 去重并保持顺序
     for key in info:
