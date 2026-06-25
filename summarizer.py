@@ -264,14 +264,20 @@ def chat_with_article(text, history, user_input, model="glm-5.2", max_tokens=512
             {"role": "system", "content": f"你是一个智能助手，正在与用户讨论以下文章：\n\n【文章内容】\n{text[:4000]}\n\n【回答要求】\n1. 优先根据文章内容回答用户的问题。\n2. 如果文章中没有相关信息，可以使用你的通用知识回答。\n3. 如果文章中有相关内容，请在回答中注明'根据文章提到...'；如果是基于通用知识，可以自然回答，无需特别注明。\n4. 回答要准确、有用、简洁。"},
         ]
 
-        # 添加历史对话
+        # 添加历史对话（确保格式正确）
         for user_msg, ai_msg in history:
-            messages.append({"role": "user", "content": user_msg})
-            messages.append({"role": "assistant", "content": ai_msg})
+            if user_msg and user_msg.strip():  # 确保用户消息不为空
+                messages.append({"role": "user", "content": user_msg.strip()})
+            if ai_msg and ai_msg.strip():  # 确保 AI 回复不为空
+                messages.append({"role": "assistant", "content": ai_msg.strip()})
 
         # 添加当前用户输入
-        messages.append({"role": "user", "content": user_input})
+        if not user_input or not user_input.strip():
+            return "请输入您的问题。", history
+        
+        messages.append({"role": "user", "content": user_input.strip()})
 
+        # 调用 API
         response = client.chat.completions.create(
             model=model,
             messages=messages,
@@ -279,7 +285,13 @@ def chat_with_article(text, history, user_input, model="glm-5.2", max_tokens=512
             temperature=0.3,
         )
 
-        ai_reply = response.choices[0].message.content.strip()
+        # 获取 AI 回复
+        ai_reply = response.choices[0].message.content
+        
+        if not ai_reply or not ai_reply.strip():
+            ai_reply = "抱歉，我没有得到有效的回复。请重新提问。"
+        else:
+            ai_reply = ai_reply.strip()
 
         # 更新历史
         updated_history = history + [[user_input, ai_reply]]
@@ -287,7 +299,10 @@ def chat_with_article(text, history, user_input, model="glm-5.2", max_tokens=512
         return ai_reply, updated_history
 
     except Exception as e:
-        return f"⚠️ 对话失败：{e}", history
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"对话错误详情：{error_detail}")  # 打印详细错误信息到日志
+        return f"⚠️ 对话失败：{str(e)}", history
 
 
 if __name__ == "__main__":
