@@ -146,9 +146,13 @@ with st.sidebar:
     st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入。")
     st.markdown("- 识别结果分为：实体识别、可视化、文章总结、自由对话四个标签页。")
 
-    if st.button("🗑️ 清除缓存"):
-        st.cache_resource.clear()
-        st.success("已清除，下次运行会重新加载。")
+    if st.button("🗑️ 一键重置", key="reset_all"):
+        # 清除所有 session_state
+        for key in list(st.session_state.keys()):
+            if key != "input_mode_radio" and key != "ner_backend_select":  # 保留输入方式和引擎选择
+                del st.session_state[key]
+        st.success("已重置所有内容，可以重新开始。")
+        st.rerun()
 
 
 # ============================================================
@@ -188,8 +192,10 @@ elif input_mode == "URL 抓取":
     if "fetched_title" not in st.session_state:
         st.session_state["fetched_title"] = ""
     
-    # 抓取按钮
-    if url and st.button("🔍 抓取文章", key="fetch_url_btn"):
+    # 抓取按钮（常驻显示）
+    fetch_clicked = st.button("🔍 抓取文章", key="fetch_url_btn", disabled=not (url and url.strip()))
+    
+    if fetch_clicked:
         try:
             with st.spinner("正在抓取文章并识别图片文字..."):
                 title, fetched_text, html = fetch_url_text(url)
