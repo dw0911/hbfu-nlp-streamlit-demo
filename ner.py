@@ -10,11 +10,20 @@ import jieba
 # ============================================================
 # GLM NER API 配置（与 summarizer.py 共用 API Key）
 # ============================================================
+_GLM_API_KEY = "02374cf332e343248cebf0bbc430d779.HUQSMSpMC1svAof1"  # 直接配置 API Key
+
 def _get_glm_api_key():
-    """惰性读取 GLM API Key。"""
+    """惰性读取 GLM API Key（支持运行时设置）。"""
+    # 优先使用代码中配置的 Key
+    if _GLM_API_KEY:
+        return _GLM_API_KEY
+    
+    # 尝试从环境变量读取
     key = os.getenv("GLM_API_KEY", "")
     if key:
         return key
+    
+    # 尝试从 streamlit secrets 读取
     try:
         import streamlit as st
         return st.secrets.get("GLM_API_KEY", "")

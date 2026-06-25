@@ -42,8 +42,6 @@ def _call_glm(prompt, text, model="glm-5.2", max_tokens=512):
     try:
         from openai import OpenAI
         client = OpenAI(api_key=api_key, base_url=_ZHIPU_BASE_URL)
-        from openai import OpenAI
-        client = OpenAI(api_key=_ZHIPU_API_KEY, base_url=_ZHIPU_BASE_URL)
         response = client.chat.completions.create(
             model=model,
             messages=[
