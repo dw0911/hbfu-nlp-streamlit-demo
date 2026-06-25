@@ -19,9 +19,9 @@ from summarizer import generate_report, classify_topic, chat_with_article
 from visualizer import wordcloud_to_base64, build_pyvis_html, build_cooccurrence_matrix, build_mpl_network
 
 st.set_page_config(
-    page_title="河北金融学院公众号 NER 实体识别",
+    page_title="中文文章智能分析助手",
     layout="wide",
-    page_icon="🎓",
+    page_icon="📝",
 )
 
 # ============================================================
@@ -72,12 +72,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="main-header">🎓 河北金融学院公众号 NER 实体识别</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">📝 中文文章智能分析助手</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="sub-header">基于 NLP 的微信公众号文章实体识别、可视化与总结系统</div>',
+    '<div class="sub-header">基于 NLP 的中文文本实体识别、可视化分析与智能对话系统</div>',
     unsafe_allow_html=True,
 )
-st.markdown('<div class="author-badge">👨💻 开发作者：河北金融学院 应统 王平</div>', unsafe_allow_html=True)
+st.markdown('<div class="author-badge">👨‍💻 开发作者：河北金融学院 应用统计学 王平</div>', unsafe_allow_html=True)
 
 
 @st.cache_resource(show_spinner="加载 OCR 引擎...")
@@ -143,8 +143,8 @@ with st.sidebar:
     st.markdown("**ℹ️ 说明**")
     st.markdown("- **NER 引擎**：GLM 大模型（在线）或 jieba 离线规则。")
     st.markdown("- **大模型已自动配置**：无需手动填写 API Key。")
-    st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入。")
-    st.markdown("- 识别结果分为：实体识别、可视化、文章总结、自由对话四个标签页。")
+    st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入方式。")
+    st.markdown("- 分析结果包含：实体识别、可视化分析、文章总结、智能对话四大功能。")
 
     if st.button("🗑️ 一键重置", key="reset_all"):
         # 清除所有 session_state
@@ -334,7 +334,7 @@ if st.session_state["recognition_done"] and st.session_state["recognized_text"]:
             top_entity = df["实体"].value_counts().idxmax() if not df.empty else "-"
             st.metric("最高频实体", top_entity)
 
-        tab_rec, tab_viz, tab_summary, tab_chat = st.tabs(["📝 实体识别", "📊 可视化分析", "📋 文章总结", "🤖 自由对话"])
+        tab_rec, tab_viz, tab_summary, tab_chat = st.tabs(["📝 实体识别", "📊 可视化分析", "📋 文章总结", "🤖 智能对话"])
 
         # ============================================================
         # 识别区
@@ -449,11 +449,11 @@ if st.session_state["recognition_done"] and st.session_state["recognized_text"]:
             st.download_button("📥 下载总结报告（JSON）", report_json, "report.json", "application/json", key="report_download")
 
         # ============================================================
-        # 自由对话区（独立标签页）
+        # 智能对话区（独立标签页）
         # ============================================================
         with tab_chat:
-            st.subheader("🤖 自由对话（基于文章内容）")
-            st.caption("⚠️ 限制：最多 3 轮对话")
+            st.subheader("🤖 智能对话（基于文章内容）")
+            st.caption("💡 提示：可以基于文章内容提问，也可以使用通用知识回答。最多 3 轮对话。")
 
             # 初始化对话状态
             if "chat_history" not in st.session_state:
