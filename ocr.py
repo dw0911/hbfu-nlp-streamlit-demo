@@ -13,15 +13,16 @@ except Exception as e:
 
 def load_ocr():
     """加载 RapidOCR 引擎。若当前环境缺少依赖或初始化失败则返回 None。"""
+    global _RAPIDOCR_AVAILABLE, _RAPIDOCR_ERROR
     if not _RAPIDOCR_AVAILABLE:
         return None
     try:
         return RapidOCR()
     except Exception as e:
-        global _RAPIDOCR_AVAILABLE, _RAPIDOCR_ERROR
         _RAPIDOCR_AVAILABLE = False
         _RAPIDOCR_ERROR = str(e)
         return None
+
 
 
 
