@@ -6,19 +6,33 @@ import jieba.analyse as analyse
 from collections import Counter
 
 # ============================================================
-# 智谱 GLM API 配置（用户需在 Streamlit Cloud Secrets 中配置 GLM_API_KEY）
+# 智谱 GLM API 配置
+# 支持两种方式：
+#   1. 环境变量 GLM_API_KEY
+#   2. Streamlit Cloud Secrets 中的 GLM_API_KEY
 # ============================================================
-_ZHIPU_API_KEY = os.getenv("GLM_API_KEY", "")
 _ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4/"
 
+def _get_glm_api_key():
+    """惰性读取 GLM API Key（支持运行时设置）。"""
+    key = os.getenv("GLM_API_KEY", "")
+    if key:
+        return key
+    # 尝试从 streamlit secrets 读取
+    try:
+        import streamlit as st
+        return st.secrets.get("GLM_API_KEY", "")
+    except Exception:
+        return ""
+
 def _call_glm(prompt, text, model="glm-5.2", max_tokens=512):
-    """
-    调用智谱 GLM API 进行大模型总结。
-    需要环境变量 GLM_API_KEY，或在 Streamlit Cloud Secrets 中配置。
-    """
-    if not _ZHIPU_API_KEY:
+    """调用智谱 GLM API 进行大模型总结。"""
+    api_key = _get_glm_api_key()
+    if not api_key:
         return None
     try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, base_url=_ZHIPU_BASE_URL)
         from openai import OpenAI
         client = OpenAI(api_key=_ZHIPU_API_KEY, base_url=_ZHIPU_BASE_URL)
         response = client.chat.completions.create(

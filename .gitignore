@@ -14,3 +14,11 @@ env/
 .mypy_cache/
 .vscode/
 .idea/
+
+# 项目无关文件
+models/
+hbfu-nlp-streamlit-demo/
+1.txt
+streamlit_out.log
+streamlit_err.log
+*.whl

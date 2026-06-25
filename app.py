@@ -8,7 +8,7 @@ import streamlit as st
 from PIL import Image
 from collections import Counter
 
-from ner import load_ner, extract_entities, LABEL_MAP, TYPE_COLORS
+from ner import extract_entities, LABEL_MAP, TYPE_COLORS
 import ocr as _ocr
 from extractor import fetch_url_text, parse_html, fetch_url_images
 
@@ -119,23 +119,9 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.markdown("**🔧 NER 引擎**")
-    engine_choice = st.selectbox(
-        "选择识别模型",
-        ["百度 LAC 预训练模型（推荐）", "jieba 离线规则"],
-        index=0,
-        key="engine_choice_select"
-    )
-    backend_map = {
-        "百度 LAC 预训练模型（推荐）": "auto",
-        "jieba 离线规则": "jieba",
-    }
-    selected_backend = backend_map[engine_choice]
-
-    st.markdown("---")
     st.markdown("**ℹ️ 说明**")
-    st.markdown("- **LAC 模式**：百度预训练模型，pip 安装即内置，支持人名/地名/机构名识别，自动回退 jieba 补充领域词。")
-    st.markdown("- **jieba 模式**：纯离线规则，零外部依赖，适合所有环境。")
+    st.markdown("- **NER 引擎**：jieba 领域词典 + 规则（离线可用，零依赖）。")
+    st.markdown("- **大模型摘要**：在下方填入智谱 GLM API Key 启用（选填）。")
     st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入。")
     st.markdown("- 识别结果分为：实体识别、可视化、文章总结三个标签页。")
 
@@ -159,10 +145,6 @@ with st.sidebar:
         st.cache_resource.clear()
         st.success("已清除，下次运行会重新加载。")
 
-
-@st.cache_resource(show_spinner="加载 NER 引擎...")
-def get_ner(backend):
-    return load_ner(backend=backend)
 
 
 # ============================================================
@@ -264,9 +246,8 @@ if input_mode != "批量文件处理" and "batch_texts" in st.session_state:
 # ============================================================
 if st.button("🚀 开始识别", type="primary", disabled=not (text and text.strip())):
     try:
-        ner_engine = get_ner(selected_backend)
         with st.spinner("正在识别实体，请稍候..."):
-            entities = extract_entities(text, ner_engine)
+            entities = extract_entities(text)
 
         if not entities:
             st.info("未识别到实体，请检查输入内容或更换文章。")
@@ -418,11 +399,10 @@ if input_mode == "批量文件处理" and "batch_texts" in st.session_state:
     st.subheader("📦 批量处理导出")
     if st.button("一键处理所有文件并导出汇总", type="secondary", key="batch_export_btn"):
         try:
-            ner_engine = get_ner(selected_backend)
             all_results = []
             progress = st.progress(0)
             for idx, (fname, content) in enumerate(st.session_state["batch_texts"].items()):
-                ents = extract_entities(content, ner_engine)
+                ents = extract_entities(content)
                 report = generate_report(content, ents, use_glm=use_glm)
                 all_results.append({
                     "文件名": fname,
