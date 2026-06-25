@@ -1,80 +1,53 @@
 # -*- coding: utf-8 -*-
+"""OCR 模块 —— 基于 Tesseract，避免 opencv 系统依赖冲突。"""
 from PIL import Image
-import numpy as np
-import os
-import traceback
+import io
 
-# 设置模型缓存目录，避免每次下载
-os.environ.setdefault('RAPIDOCR_HOME', os.path.expanduser('~/.rapidocr'))
+_OCR_AVAILABLE = False
+_OCR_ERROR = ""
 
 try:
-    from rapidocr import RapidOCR
-    _RAPIDOCR_AVAILABLE = True
-    _RAPIDOCR_ERROR = ""
+    import pytesseract
+    # 尝试验证 tesseract 可执行文件是否存在
+    ver = pytesseract.get_tesseract_version()
+    _OCR_AVAILABLE = True
+    _OCR_ERROR = ""
 except Exception as e:
-    RapidOCR = None
-    _RAPIDOCR_AVAILABLE = False
-    _RAPIDOCR_ERROR = f"RapidOCR 导入失败: {e}"
+    pytesseract = None
+    _OCR_AVAILABLE = False
+    _OCR_ERROR = f"Tesseract OCR 不可用: {e}"
 
 
 def load_ocr():
-    """加载 RapidOCR 引擎。若当前环境缺少依赖或初始化失败则返回 None。"""
-    global _RAPIDOCR_AVAILABLE, _RAPIDOCR_ERROR
-    if not _RAPIDOCR_AVAILABLE:
+    """加载 OCR 引擎。返回 True 表示可用，None 表示不可用。"""
+    if not _OCR_AVAILABLE:
         return None
-    try:
-        # RapidOCR 3.x 初始化，设置较小的检测阈值以加快速度
-        engine = RapidOCR(
-            text_score=0.5,
-            box_thresh=0.5,
-        )
-        return engine
-    except TypeError:
-        # 如果参数不支持，回退到无参数初始化
-        try:
-            return RapidOCR()
-        except Exception as e:
-            _RAPIDOCR_AVAILABLE = False
-            _RAPIDOCR_ERROR = f"RapidOCR 初始化失败: {e}"
-            return None
-    except Exception as e:
-        _RAPIDOCR_AVAILABLE = False
-        _RAPIDOCR_ERROR = f"RapidOCR 初始化失败: {e}\n{traceback.format_exc()}"
-        return None
-
-
+    return True
 
 
 def extract_text_from_image(image, engine=None):
-    """对图片做 OCR，按文本行从上到下排序后返回整段文字。"""
+    """对图片做 OCR，返回识别出的文字。"""
     if engine is None:
-        if not _RAPIDOCR_AVAILABLE:
+        if not _OCR_AVAILABLE:
             return ""
         engine = load_ocr()
         if engine is None:
             return ""
 
+    # 统一转为 PIL Image
     if isinstance(image, Image.Image):
-        img = np.array(image.convert("RGB"))
-    elif isinstance(image, (str, bytes)):
         img = image
+    elif isinstance(image, str):
+        img = Image.open(image)
+    elif isinstance(image, bytes):
+        img = Image.open(io.BytesIO(image))
     else:
-        img = np.array(image)
+        # numpy array 等其他格式
+        img = Image.fromarray(image)
 
-    result = engine(img)
-    if result is None or not result.txts:
+    # 使用中英文混合识别
+    try:
+        text = pytesseract.image_to_string(img, lang='chi_sim+eng')
+        return text.strip()
+    except Exception:
         return ""
-
-    txts = list(result.txts)
-    boxes = result.boxes
-    if boxes is not None and len(boxes) == len(txts):
-        indexed = []
-        for txt, box in zip(txts, boxes):
-            y = box[:, 1].min()
-            x = box[:, 0].min()
-            indexed.append((y, x, txt))
-        indexed.sort()
-        return "\n".join(t[2] for t in indexed)
-
-    return "\n".join(txts)
-

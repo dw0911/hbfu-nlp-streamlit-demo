@@ -165,7 +165,7 @@ elif input_mode == "上传图片（OCR）":
         st.image(image, caption="已上传图片", use_container_width=True)
         engine = get_ocr()
         if engine is None:
-            st.error(f"OCR 引擎在当前环境不可用，图片识别功能已禁用。({_ocr._RAPIDOCR_ERROR})")
+            st.error(f"OCR 引擎在当前环境不可用，图片识别功能已禁用。({_ocr._OCR_ERROR})")
         else:
             try:
                 with st.spinner("正在进行 OCR 识别..."):

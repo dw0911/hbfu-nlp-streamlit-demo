@@ -1,11 +1,9 @@
 streamlit>=1.30.0
 spacy>=3.7.0,<3.8
-https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.7.0/zh_core_web_sm-3.7.0-py3-none-any.whl
 jieba>=0.42.0
 requests>=2.31.0
 beautifulsoup4>=4.12.0
-rapidocr>=3.0.0
-onnxruntime>=1.17.0
+pytesseract>=0.3.10
 Pillow>=10.0.0
 numpy>=1.24.0,<3.0
 pandas>=2.0.0

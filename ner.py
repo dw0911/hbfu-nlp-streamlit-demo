@@ -316,11 +316,13 @@ class NEREngine:
         if backend in ("auto", "spacy"):
             try:
                 import spacy
-                # 先检查模型是否已安装，避免直接加载抛出长错误
+                # 自动下载并安装中文模型（首次部署或模型缺失时）
                 if not spacy.util.is_package("zh_core_web_sm"):
-                    raise ModuleNotFoundError(
-                        "spaCy 中文模型 zh_core_web_sm 未安装。"
-                        "如需使用高级模型，请运行：python -m spacy download zh_core_web_sm"
+                    import sys
+                    import subprocess
+                    subprocess.check_call(
+                        [sys.executable, "-m", "spacy", "download", "zh_core_web_sm"],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                     )
                 self.spacy_nlp = spacy.load("zh_core_web_sm")
                 self.backend = "spacy"
@@ -328,7 +330,7 @@ class NEREngine:
             except Exception as e:
                 self.backend = "jieba"
                 if backend == "auto":
-                    self.info = f"jieba 离线规则（spaCy 中文模型未安装，已自动回退）"
+                    self.info = f"jieba 离线规则（spaCy 中文模型未安装，已自动回退：{e}）"
                 else:
                     raise RuntimeError(
                         f"spaCy 模型加载失败：{e}\n"

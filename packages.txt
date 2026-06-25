@@ -1,4 +1,5 @@
 fonts-wqy-zenhei
 fonts-wqy-microhei
 libgomp1
-libgl1
+tesseract-ocr
+tesseract-ocr-chi-sim
