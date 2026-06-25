@@ -316,15 +316,34 @@ class NEREngine:
         if backend in ("auto", "spacy"):
             try:
                 import spacy
+                import sys
+                import subprocess
+
+                # 检测 numpy 二进制不兼容并自动修复
+                def _reinstall_spacy_for_numpy():
+                    subprocess.check_call(
+                        [sys.executable, "-m", "pip", "install", "--force-reinstall", "--no-deps", "spacy"],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    )
+
                 # 自动下载并安装中文模型（首次部署或模型缺失时）
                 if not spacy.util.is_package("zh_core_web_sm"):
-                    import sys
-                    import subprocess
                     subprocess.check_call(
                         [sys.executable, "-m", "spacy", "download", "zh_core_web_sm"],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                     )
-                self.spacy_nlp = spacy.load("zh_core_web_sm")
+
+                # 尝试加载，numpy 不兼容时强制重建 spaCy
+                try:
+                    self.spacy_nlp = spacy.load("zh_core_web_sm")
+                except Exception as load_err:
+                    err_msg = str(load_err)
+                    if "numpy.dtype" in err_msg or "dtype size changed" in err_msg:
+                        _reinstall_spacy_for_numpy()
+                        self.spacy_nlp = spacy.load("zh_core_web_sm")
+                    else:
+                        raise
+
                 self.backend = "spacy"
                 self.info = "spaCy zh_core_web_sm"
             except Exception as e:
