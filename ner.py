@@ -1,9 +1,25 @@
 # -*- coding: utf-8 -*-
 import re
 import json
+import os
 from collections import Counter
 import jieba.posseg as pseg
 import jieba
+
+
+# ============================================================
+# GLM NER API 配置（与 summarizer.py 共用 API Key）
+# ============================================================
+def _get_glm_api_key():
+    """惰性读取 GLM API Key。"""
+    key = os.getenv("GLM_API_KEY", "")
+    if key:
+        return key
+    try:
+        import streamlit as st
+        return st.secrets.get("GLM_API_KEY", "")
+    except Exception:
+        return ""
 
 # ============================================================
 # 领域词典：河北金融学院官方公众号常见实体
@@ -426,10 +442,114 @@ def extract_entities(text, nlp=None, max_len=None):
     return engine.extract(text)
 
 
+class GLMNEREngine:
+    """
+    基于智谱 GLM 的 NER 引擎。
+    通过 API 调用大模型进行实体识别，效果更准，支持更多实体类型。
+    需要配置 GLM_API_KEY。
+    """
+
+    def __init__(self):
+        self.backend = "glm"
+        self.info = "智谱 GLM-5.2（在线大模型）"
+        self._api_key = _get_glm_api_key()
+
+    def _call_glm_ner(self, text):
+        """调用 GLM API 进行实体识别。"""
+        if not self._api_key:
+            return None
+        try:
+            from openai import OpenAI
+            client = OpenAI(
+                api_key=self._api_key,
+                base_url="https://open.bigmodel.cn/api/paas/v4/"
+            )
+            prompt = (
+                "请从以下中文文本中识别命名实体，并以 JSON 数组格式返回。"
+                "每个实体包含：word（实体文本）、entity（实体类型，可选值：PERSON/ORG/LOC/TIME/EVENT/MAJOR/WORK/MONEY/PERCENT）、start（起始字符位置）、end（结束字符位置）。"
+                "只返回 JSON 数组，不要有其他内容。\n\n文本："
+            )
+            response = client.chat.completions.create(
+                model="glm-5.2",
+                messages=[
+                    {"role": "system", "content": "你是一个命名实体识别助手，只返回 JSON 格式结果。"},
+                    {"role": "user", "content": prompt + text[:4000]},
+                ],
+                max_tokens=1024,
+                temperature=0.1,
+            )
+            result = response.choices[0].message.content.strip()
+            # 提取 JSON 数组
+            json_match = re.search(r'\[.*\]', result, re.DOTALL)
+            if json_match:
+                entities = json.loads(json_match.group())
+                # 补全 score 字段
+                for ent in entities:
+                    if "score" not in ent:
+                        ent["score"] = 0.95
+                return entities
+            return None
+        except Exception as e:
+            print(f"GLM NER 调用失败：{e}")
+            return None
+
+    def extract(self, text):
+        """对文本进行实体识别，返回实体列表。"""
+        if not text or not isinstance(text, str):
+            return []
+        text = text.strip()
+        if not text:
+            return []
+
+        # 调用 GLM NER
+        entities = self._call_glm_ner(text)
+        if entities:
+            return entities
+
+        # 回退到 jieba
+        print("GLM NER 失败，回退到 jieba 引擎")
+        jieba_engine = NEREngine()
+        return jieba_engine.extract(text)
+
+
+def load_ner(backend="glm"):
+    """
+    加载 NER 引擎。
+    backend: "glm"（默认，大模型）或 "jieba"（离线兜底）
+    """
+    if backend == "glm":
+        engine = GLMNEREngine()
+        # 检查 API Key 是否可用
+        if not engine._api_key:
+            print("未配置 GLM_API_KEY，自动切换到 jieba 引擎")
+            return NEREngine()
+        return engine
+    else:
+        return NEREngine()
+
+
+def extract_entities(text, nlp=None, max_len=None, backend="glm"):
+    """兼容旧接口的实体识别函数。backend 参数控制使用的引擎。"""
+    engine = load_ner(backend=backend)
+    return engine.extract(text)
+
+
 if __name__ == "__main__":
     sample = "河北金融学院金融系于2024年5月15日在图书馆报告厅举办金融科技讲座，李明教授主讲，并与招商银行保定分行签署合作协议。"
-    engine = load_ner()
+    
+    # 测试 GLM 引擎
+    print("=== GLM 引擎 ===")
+    engine = load_ner(backend="glm")
     print(f"引擎：{engine.info}")
+    if isinstance(engine, GLMNEREngine) and not engine._api_key:
+        print("（GLM API Key 未配置，已自动切换到 jieba）")
     print("实体识别结果：")
+    for e in engine.extract(sample):
+        print(e)
+    
+    # 测试 jieba 引擎
+    print("\n=== jieba 引擎 ===")
+    engine = load_ner(backend="jieba")
+    print(f"引擎：{engine.info}")
     for e in engine.extract(sample):
         print(e)

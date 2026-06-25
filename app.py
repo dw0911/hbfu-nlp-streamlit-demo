@@ -8,7 +8,7 @@ import streamlit as st
 from PIL import Image
 from collections import Counter
 
-from ner import extract_entities, LABEL_MAP, TYPE_COLORS
+from ner import extract_entities, load_ner, LABEL_MAP, TYPE_COLORS
 import ocr as _ocr
 from extractor import fetch_url_text, parse_html, fetch_url_images
 
@@ -119,8 +119,32 @@ with st.sidebar:
     )
 
     st.markdown("---")
+    st.markdown("**🤖 NER 实体识别引擎**")
+    ner_backend = st.selectbox(
+        "选择 NER 引擎",
+        ["glm", "jieba"],
+        index=0,  # 默认选择 GLM
+        format_func=lambda x: "智谱 GLM-5.2（在线大模型，推荐）" if x == "glm" else "jieba 离线规则（兜底）",
+        key="ner_backend_select"
+    )
+    
+    # 检查 GLM API Key 是否配置
+    if ner_backend == "glm":
+        import os
+        glm_key = os.getenv("GLM_API_KEY", "")
+        if not glm_key:
+            try:
+                import streamlit as st
+                glm_key = st.secrets.get("GLM_API_KEY", "")
+            except Exception:
+                pass
+        if not glm_key:
+            st.warning("⚠️ 未配置 GLM_API_KEY，将自动切换到 jieba 引擎")
+            ner_backend = "jieba"
+
+    st.markdown("---")
     st.markdown("**ℹ️ 说明**")
-    st.markdown("- **NER 引擎**：jieba 领域词典 + 规则（离线可用，零依赖）。")
+    st.markdown("- **NER 引擎**：GLM 大模型（在线）或 jieba 离线规则。")
     st.markdown("- **大模型摘要**：在下方填入智谱 GLM API Key 启用（选填）。")
     st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入。")
     st.markdown("- 识别结果分为：实体识别、可视化、文章总结三个标签页。")
@@ -246,13 +270,14 @@ if input_mode != "批量文件处理" and "batch_texts" in st.session_state:
 # ============================================================
 if st.button("🚀 开始识别", type="primary", disabled=not (text and text.strip())):
     try:
-        with st.spinner("正在识别实体，请稍候..."):
-            entities = extract_entities(text)
+        with st.spinner(f"正在使用 {ner_backend.upper()} 引擎识别实体，请稍候..."):
+            entities = extract_entities(text, backend=ner_backend)
 
         if not entities:
             st.info("未识别到实体，请检查输入内容或更换文章。")
         else:
-            st.success(f"识别到 {len(entities)} 个实体 · 当前引擎：jieba 离线规则")
+            engine_name = "智谱 GLM-5.2" if ner_backend == "glm" else "jieba 离线规则"
+            st.success(f"识别到 {len(entities)} 个实体 · 当前引擎：{engine_name}")
 
             df = pd.DataFrame(entities)
             df["类型"] = df["entity"].map(LABEL_MAP).fillna(df["entity"])
@@ -402,7 +427,7 @@ if input_mode == "批量文件处理" and "batch_texts" in st.session_state:
             all_results = []
             progress = st.progress(0)
             for idx, (fname, content) in enumerate(st.session_state["batch_texts"].items()):
-                ents = extract_entities(content)
+                ents = extract_entities(content, backend=ner_backend)
                 report = generate_report(content, ents, use_glm=use_glm)
                 all_results.append({
                     "文件名": fname,
