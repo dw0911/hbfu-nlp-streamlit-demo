@@ -1,8 +1,38 @@
 import re
 import json
+import os
 import jieba
 import jieba.analyse as analyse
 from collections import Counter
+
+# ============================================================
+# 智谱 GLM API 配置（用户需在 Streamlit Cloud Secrets 中配置 GLM_API_KEY）
+# ============================================================
+_ZHIPU_API_KEY = os.getenv("GLM_API_KEY", "")
+_ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4/"
+
+def _call_glm(prompt, text, model="glm-5.2", max_tokens=512):
+    """
+    调用智谱 GLM API 进行大模型总结。
+    需要环境变量 GLM_API_KEY，或在 Streamlit Cloud Secrets 中配置。
+    """
+    if not _ZHIPU_API_KEY:
+        return None
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=_ZHIPU_API_KEY, base_url=_ZHIPU_BASE_URL)
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": text[:8000]},  # 截断避免超 token 限制
+            ],
+            max_tokens=max_tokens,
+            temperature=0.3,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception:
+        return None
 
 # 停用词（简单版，可扩展）
 _STOPWORDS = set([
@@ -36,8 +66,13 @@ def _clean_sentence(sentence):
     return sentence
 
 
-def summarize(text, top_k=3):
-    """抽取式文章摘要：返回摘要文本与关键词列表。"""
+def summarize(text, top_k=3, use_glm=False):
+    """
+    文章摘要：
+      - use_glm=False：抽取式（jieba 关键词 + 句子打分）
+      - use_glm=True ：调用智谱 GLM-5.2 生成式摘要（需配置 GLM_API_KEY）
+    返回 (summary_text, keywords)
+    """
     if not text or not isinstance(text, str):
         return "", []
 
@@ -45,13 +80,25 @@ def summarize(text, top_k=3):
     if not text:
         return "", []
 
+    # 提取关键词（两种模式共用）
+    keywords = analyse.extract_tags(text, topK=25, withWeight=True)
+
+    # 大模型生成式摘要
+    if use_glm:
+        prompt = (
+            "请用3-5句话概括以下公众号文章的核心内容，语言简洁正式，"
+            "突出：主办/参与单位、主要人物、时间地点、活动性质、成果意义。"
+            "不要重复，不要添加文章以外的内容。"
+        )
+        glm_summary = _call_glm(prompt, text, max_tokens=512)
+        if glm_summary:
+            return glm_summary, keywords
+
+    # 回退：抽取式摘要
     sentences = _split_sentences(text)
     if not sentences:
-        return text, []
+        return text, keywords
 
-    # 提取关键词（带权重）
-    keywords = analyse.extract_tags(text, topK=25, withWeight=True)
-    keyword_set = {k for k, _ in keywords}
     keyword_weight = {k: w for k, w in keywords}
 
     scored = []
@@ -66,7 +113,6 @@ def summarize(text, top_k=3):
             if w in keyword_weight:
                 score += keyword_weight[w]
 
-        # 包含时间、地点、事件、组织的句子加分
         if re.search(r"\d{4}年|\d{1,2}月|\d{1,2}日", sent_clean):
             score += 1.2
         if re.search(r"学院|系|处|部|公司|银行|集团", sent_clean):
@@ -76,7 +122,6 @@ def summarize(text, top_k=3):
         if re.search(r"举办|召开|举行|开展|组织|签约|合作|启动", sent_clean):
             score += 0.8
 
-        # 首句、末句适度加权
         if idx == 0:
             score += 1.0
         if idx == len(sentences) - 1:
@@ -87,7 +132,6 @@ def summarize(text, top_k=3):
     if not scored:
         return text, keywords
 
-    # 选择 top_k 句子，并按原文顺序组合
     scored.sort(key=lambda x: x[0], reverse=True)
     top_sentences = scored[:top_k]
     top_sentences.sort(key=lambda x: x[1])
@@ -163,9 +207,9 @@ def extract_key_info(text, entities):
     return info
 
 
-def generate_report(text, entities):
-    """生成完整的文章概括报告。"""
-    summary, keywords = summarize(text)
+def generate_report(text, entities, use_glm=False):
+    """生成完整的文章概括报告。use_glm=True 时调用智谱 GLM 生成摘要。"""
+    summary, keywords = summarize(text, use_glm=use_glm)
     topic = classify_topic(text)
     key_info = extract_key_info(text, entities)
 

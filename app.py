@@ -139,6 +139,22 @@ with st.sidebar:
     st.markdown("- 支持文本、图片 OCR、URL、单文件、批量文件五种输入。")
     st.markdown("- 识别结果分为：实体识别、可视化、文章总结三个标签页。")
 
+    st.markdown("---")
+    st.markdown("**🤖 大模型总结（智谱 GLM-5.2）**")
+    glm_api_key = st.text_input(
+        "GLM API Key（选填，填写后启用大模型生成式摘要）",
+        type="password",
+        value=st.secrets.get("GLM_API_KEY", ""),
+        key="glm_api_key_input"
+    )
+    use_glm = bool(glm_api_key.strip())
+    if use_glm:
+        import os
+        os.environ["GLM_API_KEY"] = glm_api_key.strip()
+        st.success("✅ 已配置 GLM API Key，将使用大模型生成摘要。")
+    else:
+        st.info("未填写 API Key，使用离线抽取式摘要。")
+
     if st.button("🗑️ 清除缓存"):
         st.cache_resource.clear()
         st.success("已清除，下次运行会重新加载。")
@@ -361,7 +377,7 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
             # 总结区
             # ============================================================
             with tab_summary:
-                report = generate_report(text, entities)
+                report = generate_report(text, entities, use_glm=use_glm)
 
                 col_s1, col_s2 = st.columns([3, 2])
                 with col_s1:
@@ -407,7 +423,7 @@ if input_mode == "批量文件处理" and "batch_texts" in st.session_state:
             progress = st.progress(0)
             for idx, (fname, content) in enumerate(st.session_state["batch_texts"].items()):
                 ents = extract_entities(content, ner_engine)
-                report = generate_report(content, ents)
+                report = generate_report(content, ents, use_glm=use_glm)
                 all_results.append({
                     "文件名": fname,
                     "实体数": len(ents),
