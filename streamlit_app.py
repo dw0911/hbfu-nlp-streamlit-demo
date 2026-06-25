@@ -1,12 +1,11 @@
 # streamlit_app.py - Streamlit Cloud 入口文件
 # 此文件仅用于指向实际的应用文件 app.py
 
-import os
 import sys
 
-# 将当前目录添加到 Python 路径
-sys.path.insert(0, os.path.dirname(__file__))
+# 关键修复：每次 rerun 时强制重新导入 app 模块
+# 否则 Streamlit 交互（点击按钮等）时 import app 会因模块缓存而变成空操作，导致白屏
+if 'app' in sys.modules:
+    del sys.modules['app']
 
-# 导入主应用文件
-# Streamlit 会在导入时自动执行 app.py 中的全局代码
 import app
