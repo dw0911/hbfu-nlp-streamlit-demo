@@ -293,7 +293,7 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
                 with col_right:
                     st.subheader("实体列表")
                     types = sorted(df["类型"].unique())
-                    selected = st.multiselect("按类型筛选", types, default=types)
+                    selected = st.multiselect("按类型筛选", types, default=types, key="entity_filter_multiselect")
                     filtered = df[df["类型"].isin(selected)]
                     st.dataframe(filtered, use_container_width=True, height=420)
 
@@ -389,7 +389,7 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
                         st.markdown(f"**{label}**：{display_vals}")
 
                 report_json = json.dumps(report, ensure_ascii=False, indent=2)
-                st.download_button("📥 下载总结报告（JSON）", report_json, "report.json", "application/json")
+                st.download_button("📥 下载总结报告（JSON）", report_json, "report.json", "application/json", key="report_download")
     except Exception as e:
         st.error(f"识别失败：{e}")
 

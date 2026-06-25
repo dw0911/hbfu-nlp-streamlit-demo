@@ -6,6 +6,10 @@ from collections import Counter, defaultdict
 
 import os
 
+# 必须在 import matplotlib.pyplot 之前设置后端，避免无头服务器环境崩溃
+import matplotlib
+matplotlib.use('Agg')
+
 from wordcloud import WordCloud
 import networkx as nx
 import matplotlib.pyplot as plt
