@@ -355,7 +355,7 @@ with st.sidebar:
         <p style='font-weight: 600; margin-bottom: 8px; color: #1e293b;'>ℹ️ 功能说明</p>
         <ul style='margin: 0; padding-left: 20px; color: #64748b; font-size: 0.9rem;'>
             <li>双引擎：GLM 大模型 / jieba 离线</li>
-            <li>支持环境变量 / Streamlit Secrets 配置 API Key</li>
+            <li>已默认配置 GLM API Key</li>
             <li>五种输入方式</li>
             <li>四大分析功能</li>
         </ul>

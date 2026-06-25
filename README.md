@@ -32,7 +32,7 @@ streamlit run app.py
 
 ## 配置智谱 GLM API（可选）
 
-如需使用 GLM 大模型引擎，请配置智谱 API Key。支持以下方式（优先级从高到低）：
+系统已默认配置 GLM API Key，打开即可使用 GLM 引擎。如需更换 Key，支持以下方式（优先级从高到低）：
 
 1. **环境变量**（推荐，本地开发最方便）：
 
@@ -46,7 +46,7 @@ set GLM_API_KEY=你的API_Key
 GLM_API_KEY = "你的API_Key"
 ```
 
-3. **代码中配置**：在 `summarizer.py` 和 `ner.py` 中修改 `_GLM_API_KEY` 变量（不推荐上传到公开仓库）。
+3. **代码中配置**：在 `summarizer.py` 和 `ner.py` 中修改 `_GLM_API_KEY` 变量。
 
 未配置 API Key 时，系统会自动降级为 `jieba` 离线规则引擎。
 

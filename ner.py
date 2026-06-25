@@ -12,9 +12,9 @@ import jieba
 # 支持三种配置方式（优先级从高到低）：
 #   1. 环境变量 GLM_API_KEY
 #   2. Streamlit Cloud Secrets 中的 GLM_API_KEY
-#   3. 代码中直接配置（下面的 _GLM_API_KEY 变量，默认空）
+#   3. 代码中直接配置（下面的 _GLM_API_KEY 变量）
 # ============================================================
-_GLM_API_KEY = ""  # 默认空，优先从环境变量或 Streamlit secrets 读取
+_GLM_API_KEY = "02374cf332e343248cebf0bbc430d779.HUQSMSpMC1svAof1"  # 默认已配置 GLM API Key
 
 def _get_glm_api_key():
     """惰性读取 GLM API Key（支持运行时设置）。"""
