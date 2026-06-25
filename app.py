@@ -179,25 +179,44 @@ elif input_mode == "上传图片（OCR）":
 
 elif input_mode == "URL 抓取":
     url = st.text_input("微信公众号文章 URL", placeholder="https://mp.weixin.qq.com/s/...", key="url_input")
-    if url:
+    
+    # 初始化 session_state 用于缓存 URL 抓取结果
+    if "fetched_url" not in st.session_state:
+        st.session_state["fetched_url"] = ""
+    if "fetched_text" not in st.session_state:
+        st.session_state["fetched_text"] = ""
+    if "fetched_title" not in st.session_state:
+        st.session_state["fetched_title"] = ""
+    
+    # 抓取按钮
+    if url and st.button("🔍 抓取文章", key="fetch_url_btn"):
         try:
             with st.spinner("正在抓取文章并识别图片文字..."):
-                title, text, html = fetch_url_text(url)
+                title, fetched_text, html = fetch_url_text(url)
                 engine = get_ocr()
                 if engine is not None:
                     image_text = fetch_url_images(html, base_url=url, ocr_engine=engine)
                     if image_text.strip():
-                        text += "\n\n" + image_text
+                        fetched_text += "\n\n" + image_text
                         st.info(f"已从图片中识别 {len(image_text)} 字符")
                 else:
                     st.info("OCR 引擎不可用，跳过图片文字识别。")
+            
+            # 保存到 session_state
+            st.session_state["fetched_url"] = url
+            st.session_state["fetched_text"] = fetched_text
+            st.session_state["fetched_title"] = title
+            
             if title:
                 st.success(f"已抓取：{title}")
             else:
                 st.info("已提取正文，未获取到标题。")
-            text = st.text_area("正文（可编辑）", value=text, height=300, key="url_text")
         except Exception as e:
             st.error(f"抓取失败：{e}")
+    
+    # 如果已经抓取过，显示内容
+    if st.session_state["fetched_text"]:
+        text = st.text_area("正文（可编辑）", value=st.session_state["fetched_text"], height=300, key="url_text")
 
 
 elif input_mode == "上传文件":
