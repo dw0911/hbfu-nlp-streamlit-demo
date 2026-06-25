@@ -425,6 +425,21 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
                     st.session_state["chat_history"] = []
                 if "chat_round" not in st.session_state:
                     st.session_state["chat_round"] = 0
+                if "chat_article_hash" not in st.session_state:
+                    st.session_state["chat_article_hash"] = None
+
+                # 识别完成后，自动初始化对话（将文章摘要作为首轮对话）
+                # 使用文章内容的 hash 来追踪是否换了文章
+                import hashlib
+                current_hash = hashlib.md5(text.encode()).hexdigest()[:16]
+                
+                if st.session_state["chat_article_hash"] != current_hash:
+                    # 新文章，重新初始化对话
+                    if report.get("summary"):
+                        summary_intro = f"我已阅读这篇文章，以下是摘要：\n\n{report['summary']}\n\n您可以基于这篇文章提问，我会尽力回答。"
+                        st.session_state["chat_history"] = [["请介绍这篇文章的主要内容", summary_intro]]
+                        st.session_state["chat_round"] = 1
+                        st.session_state["chat_article_hash"] = current_hash
 
                 # 显示对话历史
                 if st.session_state["chat_history"]:
@@ -437,35 +452,38 @@ if st.button("🚀 开始识别", type="primary", disabled=not (text and text.st
 
                 # 检查是否达到轮次上限
                 if st.session_state["chat_round"] >= 3:
-                    st.warning("已达到对话轮次上限（3 轮）。刷新页面可重新开始。")
+                    st.warning("已达到对话轮次上限（3 轮）。点击清除对话可重新开始。")
                 else:
-                    # 用户输入
-                    user_input = st.text_input(
-                        f"第 {st.session_state['chat_round'] + 1} 轮对话",
-                        placeholder="请输入您的问题（基于文章内容）...",
-                        key="chat_input"
-                    )
+                    # 用户输入（使用 form 避免页面刷新）
+                    with st.form(key="chat_form", clear_on_submit=True):
+                        user_input = st.text_input(
+                            f"第 {st.session_state['chat_round'] + 1} 轮对话",
+                            placeholder="请输入您的问题（基于文章内容）...",
+                            key="chat_input"
+                        )
+                        submit_button = st.form_submit_button(label="发送")
 
-                    if st.button("发送", key="chat_send") and user_input:
-                        if not use_glm and not os.getenv("GLM_API_KEY"):
-                            st.error("⚠️ 请先在侧边栏配置 GLM API Key 以使用对话功能。")
-                        else:
-                            with st.spinner("AI 正在思考..."):
-                                from summarizer import chat_with_article
-                                ai_reply, updated_history = chat_with_article(
-                                    text,
-                                    st.session_state["chat_history"],
-                                    user_input
-                                )
-                                st.session_state["chat_history"] = updated_history
-                                st.session_state["chat_round"] = len(updated_history)
-                                st.rerun()
+                        if submit_button and user_input:
+                            if not use_glm and not os.getenv("GLM_API_KEY"):
+                                st.error("⚠️ 请先在侧边栏配置 GLM API Key 以使用对话功能。")
+                            else:
+                                with st.spinner("AI 正在思考..."):
+                                    from summarizer import chat_with_article
+                                    ai_reply, updated_history = chat_with_article(
+                                        text,
+                                        st.session_state["chat_history"],
+                                        user_input
+                                    )
+                                    st.session_state["chat_history"] = updated_history
+                                    st.session_state["chat_round"] = len(updated_history)
+                                    st.rerun()
 
                 # 清除对话按钮
                 if st.session_state["chat_history"]:
                     if st.button("🗑️ 清除对话", key="chat_clear"):
                         st.session_state["chat_history"] = []
                         st.session_state["chat_round"] = 0
+                        st.session_state["chat_initialized"] = False
                         st.rerun()
     except Exception as e:
         st.error(f"识别失败：{e}")
